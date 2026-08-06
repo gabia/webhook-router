@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0}
+  a{color:var(--accent,#4f46e5);text-decoration:none}
+  a:hover{text-decoration:underline}
+  input,select,button,textarea{font-family:inherit}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent,#4f46e5);box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#d0d5dd;border-radius:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  @keyframes omOverlay{from{opacity:0}to{opacity:1}}
+  @keyframes omPop{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+  @keyframes omDrawer{from{transform:translateX(100%)}to{transform:none}}
+</style>
+</helmet>
+<div style="--accent: {{ accent }}; min-height:100vh;background:#f6f7f9;color:#1a1d24;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;line-height:1.5">
+  <div style="max-width:1160px;margin:0 auto;padding:32px 28px 64px">
+
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:24px">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div style="width:26px;height:26px;border-radius:6px;background:var(--accent,#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px">W</div>
+          <h1 style="margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em">Webhook 필터링 규칙</h1>
+        </div>
+        <p style="margin:0;color:#667085;font-size:13px">GitLab · Sentry 웹훅을 수신해 조건에 맞을 때만 지정한 URL로 재전송합니다.</p>
+      </div>
+      <button onClick="{{ onAddNew }}" style="flex:none;background:var(--accent,#4f46e5);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px" style-hover="filter:brightness(1.06)">
+        <span style="font-size:16px;line-height:1">＋</span> 규칙 추가
+      </button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px">
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:10px;padding:16px 18px">
+        <div style="color:#667085;font-size:12px;font-weight:500;margin-bottom:6px">전체 규칙</div>
+        <div style="font-size:26px;font-weight:700;font-family:'IBM Plex Mono',monospace">{{ stat_total }}</div>
+      </div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:10px;padding:16px 18px">
+        <div style="color:#667085;font-size:12px;font-weight:500;margin-bottom:6px">활성 규칙</div>
+        <div style="font-size:26px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#16a34a">{{ stat_active }}</div>
+      </div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:10px;padding:16px 18px">
+        <div style="color:#667085;font-size:12px;font-weight:500;margin-bottom:6px">전송 대상 URL</div>
+        <div style="font-size:26px;font-weight:700;font-family:'IBM Plex Mono',monospace">{{ stat_dest }}</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="position:relative;flex:1;max-width:360px">
+        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#98a2b3;font-size:13px">⌕</span>
+        <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="규칙 이름 · 소스 · 프로젝트 · 설명 검색" style="width:100%;padding:9px 12px 9px 32px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;background:#fff" />
+      </div>
+      <div style="color:#98a2b3;font-size:12px;font-family:'IBM Plex Mono',monospace">{{ result_count }} rules</div>
+    </div>
+
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:2.1fr 92px 1.4fr 1.8fr 1.2fr 78px 88px;gap:14px;padding:12px 18px;background:#fafbfc;border-bottom:1px solid #e4e7ec;font-size:11px;font-weight:600;color:#98a2b3;text-transform:uppercase;letter-spacing:.04em">
+        <div>규칙</div><div>소스</div><div>프로젝트</div><div>Actions</div><div>작성자</div><div style="text-align:center">활성</div><div style="text-align:right">관리</div>
+      </div>
+
+      <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:56px 20px;text-align:center;color:#98a2b3">
+          <div style="font-size:15px;font-weight:600;color:#667085;margin-bottom:6px">일치하는 규칙이 없습니다</div>
+          <div style="font-size:13px">검색어를 지우거나 새 규칙을 추가해 보세요.</div>
+        </div>
+      </sc-if>
+
+      <sc-for list="{{ pageRules }}" as="row" hint-placeholder-count="5">
+        <div onClick="{{ row.onSelect }}" style="display:grid;grid-template-columns:2.1fr 92px 1.4fr 1.8fr 1.2fr 78px 88px;gap:14px;padding:15px 18px;border-bottom:1px solid #f0f1f4;align-items:center;cursor:pointer" style-hover="background:#fafbfc">
+          <div style="min-width:0">
+            <div style="font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ row.name }}</div>
+            <div style="color:#98a2b3;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ row.description }}</div>
+          </div>
+          <div style="min-width:0">
+            <span style="{{ row.srcChipStyle }}"><span style="{{ row.srcDotStyle }}">{{ row.srcInitial }}</span>{{ row.srcLabel }}</span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#475467;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ row.repo }}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            <sc-for list="{{ row.actionBadges }}" as="b" hint-placeholder-count="2">
+              <span style="{{ b.style }}">{{ b.id }}</span>
+            </sc-for>
+          </div>
+          <div style="font-size:12px;color:#475467;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ row.authorText }}</div>
+          <div style="display:flex;justify-content:center">
+            <div onClick="{{ row.onToggle }}" style="{{ row.trackStyle }}"><div style="{{ row.knobStyle }}"></div></div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:6px">
+            <button onClick="{{ row.onEdit }}" title="수정" style="width:30px;height:30px;border:1px solid #e4e7ec;background:#fff;border-radius:7px;cursor:pointer;color:#667085;font-size:13px" style-hover="border-color:#d0d5dd;color:#1a1d24">✎</button>
+            <button onClick="{{ row.onDelete }}" title="삭제" style="width:30px;height:30px;border:1px solid #e4e7ec;background:#fff;border-radius:7px;cursor:pointer;color:#98a2b3;font-size:13px" style-hover="border-color:#fecaca;color:#dc2626;background:#fef2f2">🗑</button>
+          </div>
+        </div>
+      </sc-for>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 18px;background:#fafbfc">
+        <div style="color:#98a2b3;font-size:12px;font-family:'IBM Plex Mono',monospace">{{ page_info }}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onClick="{{ onPrev }}" disabled="{{ noPrev }}" style="{{ prevStyle }}">← 이전</button>
+          <span style="font-size:13px;font-family:'IBM Plex Mono',monospace;color:#475467;min-width:56px;text-align:center">{{ page_label }}</span>
+          <button onClick="{{ onNext }}" disabled="{{ noNext }}" style="{{ nextStyle }}">다음 →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ showDetail }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCloseDetail }}" style="position:fixed;inset:0;background:rgba(16,20,30,.35);z-index:40;animation:omOverlay .15s ease">
+      <div onClick="{{ stop }}" style="position:absolute;top:0;right:0;height:100%;width:460px;max-width:92vw;background:#fff;box-shadow:-8px 0 30px rgba(16,20,30,.15);animation:omDrawer .22s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column">
+        <div style="padding:20px 22px;border-bottom:1px solid #eceef1;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <h2 style="margin:0;font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ detail_name }}</h2>
+              <span style="{{ detail_statusStyle }}">{{ detail_statusText }}</span>
+            </div>
+            <div style="color:#98a2b3;font-size:12.5px">{{ detail_description }}</div>
+          </div>
+          <button onClick="{{ onCloseDetail }}" style="flex:none;width:30px;height:30px;border:none;background:#f2f4f7;border-radius:7px;cursor:pointer;color:#667085;font-size:15px">✕</button>
+        </div>
+        <div style="padding:22px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:22px">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:#98a2b3;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">이벤트 소스</div>
+            <span style="{{ detail_srcChipStyle }}"><span style="{{ detail_srcDotStyle }}">{{ detail_srcInitial }}</span>{{ detail_srcLabel }}</span>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:#98a2b3;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">{{ detail_projectLabel }}</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;background:#f6f7f9;border:1px solid #eceef1;border-radius:7px;padding:9px 12px">{{ detail_repo }}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:#98a2b3;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">허용 Actions</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-for list="{{ detail_actions }}" as="b" hint-placeholder-count="3">
+                <span style="{{ b.style }}">{{ b.id }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:#98a2b3;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">{{ detail_authorLabel }}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-for list="{{ detail_authors }}" as="a" hint-placeholder-count="2">
+                <span style="display:inline-flex;align-items:center;gap:7px;background:#f6f7f9;border:1px solid #eceef1;border-radius:999px;padding:5px 12px 5px 6px;font-size:12px">
+                  <span style="width:20px;height:20px;border-radius:50%;background:var(--accent,#4f46e5);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600">{{ a.initial }}</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;color:#475467">{{ a.handle }}</span>
+                </span>
+              </sc-for>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:#98a2b3;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">전송 대상 URL ({{ detail_destCount }})</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{ detail_destinations }}" as="d" hint-placeholder-count="2">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;background:#f6f7f9;border:1px solid #eceef1;border-radius:7px;padding:8px 11px;word-break:break-all;color:#475467">{{ d.url }}</div>
+              </sc-for>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:#98a2b3;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">전송 페이로드 미리보기</div>
+            <pre style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.6;background:#0f1420;color:#c7d2e3;border-radius:9px;padding:14px 16px;overflow-x:auto">{{ detail_sample }}</pre>
+          </div>
+        </div>
+        <div style="padding:16px 22px;border-top:1px solid #eceef1;display:flex;gap:10px">
+          <button onClick="{{ detail_onEdit }}" style="flex:1;background:var(--accent,#4f46e5);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">수정</button>
+          <button onClick="{{ detail_onDelete }}" style="background:#fff;border:1px solid #fecaca;color:#dc2626;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer">삭제</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCancel }}" style="position:fixed;inset:0;background:rgba(16,20,30,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;animation:omOverlay .15s ease">
+      <div onClick="{{ stop }}" style="width:600px;max-width:100%;background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(16,20,30,.28);animation:omPop .22s cubic-bezier(.4,0,.2,1);margin:auto">
+        <div style="padding:20px 24px;border-bottom:1px solid #eceef1;display:flex;align-items:center;justify-content:space-between">
+          <h2 style="margin:0;font-size:17px;font-weight:700">{{ modal_title }}</h2>
+          <button onClick="{{ onCancel }}" style="width:30px;height:30px;border:none;background:#f2f4f7;border-radius:7px;cursor:pointer;color:#667085;font-size:15px">✕</button>
+        </div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:20px;max-height:66vh;overflow-y:auto">
+
+          <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ false }}">
+            <div>
+              <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:4px">어떤 서비스의 웹훅을 받을까요? <span style="color:#dc2626">*</span></label>
+              <div style="font-size:12px;color:#98a2b3;margin-bottom:14px">소스는 생성 후 변경할 수 없습니다. 신중히 선택하세요.</div>
+              <div style="display:flex;gap:12px">
+                <sc-for list="{{ sourceOptions }}" as="src" hint-placeholder-count="2">
+                  <div onClick="{{ src.onPick }}" style="{{ src.style }}">
+                    <span style="{{ src.dotStyle }}">{{ src.initial }}</span>
+                    <div>
+                      <div style="{{ src.labelStyle }}">{{ src.label }}</div>
+                      <div style="{{ src.blurbStyle }}">{{ src.blurb }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:20px">
+
+          <div style="display:flex;align-items:center;gap:10px;background:#f6f7f9;border:1px solid #eceef1;border-radius:9px;padding:10px 13px">
+            <span style="{{ lockedSrcStyle }}"><span style="{{ lockedDotStyle }}">{{ draft_srcInitial }}</span>{{ draft_srcLabel }}</span>
+            <span style="font-size:12px;color:#98a2b3">🔒 {{ lockedNote }}</span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+              <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:6px">규칙 이름 <span style="color:#dc2626">*</span></label>
+              <input value="{{ draft_name }}" onChange="{{ onDraftName }}" placeholder="예: 이슈 생성 알림" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px" />
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:6px">{{ draft_projectLabel }} <span style="color:#dc2626">*</span></label>
+              <input value="{{ draft_repo }}" onChange="{{ onDraftRepo }}" placeholder="{{ draft_projectPlaceholder }}" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
+            </div>
+          </div>
+
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:6px">설명</label>
+            <input value="{{ draft_description }}" onChange="{{ onDraftDescription }}" placeholder="이 규칙에 대한 간단한 메모" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px" />
+          </div>
+
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">허용 Actions <span style="color:#dc2626">*</span></label>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <sc-for list="{{ actionGroups }}" as="g" hint-placeholder-count="3">
+                <div>
+                  <div style="font-size:11px;font-weight:600;color:#98a2b3;margin-bottom:6px;display:flex;align-items:center;gap:6px"><span style="{{ g.dotStyle }}"></span>{{ g.group }}</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
+                      <div onClick="{{ it.onToggle }}" style="{{ it.style }}">{{ it.raw }}</div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">{{ draft_authorLabel }} <span style="font-weight:400;color:#98a2b3">· 비워두면 모든 작성자 허용</span></label>
+            <div style="display:flex;gap:8px;margin-bottom:8px">
+              <input value="{{ authorInput }}" onChange="{{ onAuthorInput }}" onKeyDown="{{ onAuthorKey }}" placeholder="{{ draft_authorPlaceholder }}" style="flex:1;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
+              <button onClick="{{ onAddAuthor }}" style="flex:none;background:#eef0f4;border:1px solid #d0d5dd;border-radius:8px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer;color:#344054">추가</button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-if value="{{ hasAuthors }}" hint-placeholder-val="{{ true }}">
+                <sc-for list="{{ authorTags }}" as="a" hint-placeholder-count="2">
+                  <span style="display:inline-flex;align-items:center;gap:7px;background:#f6f7f9;border:1px solid #eceef1;border-radius:999px;padding:5px 7px 5px 6px;font-size:12px">
+                    <span style="{{ a.avatarStyle }}">{{ a.initial }}</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;color:#475467">{{ a.handle }}</span>
+                    <button onClick="{{ a.onRemove }}" style="width:20px;height:20px;border:none;background:#e9ebef;border-radius:5px;cursor:pointer;color:#667085;font-size:11px">✕</button>
+                  </span>
+                </sc-for>
+              </sc-if>
+            </div>
+          </div>
+
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">전송 대상 URL <span style="color:#dc2626">*</span></label>
+            <div style="display:flex;gap:8px;margin-bottom:8px">
+              <input value="{{ destInput }}" onChange="{{ onDestInput }}" onKeyDown="{{ onDestKey }}" placeholder="https://example.com/webhook" style="flex:1;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
+              <button onClick="{{ onAddDest }}" style="flex:none;background:#eef0f4;border:1px solid #d0d5dd;border-radius:8px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer;color:#344054">추가</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{ destItems }}" as="d" hint-placeholder-count="1">
+                <div style="display:flex;align-items:center;gap:8px;background:#f6f7f9;border:1px solid #eceef1;border-radius:7px;padding:7px 8px 7px 11px">
+                  <span style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#475467;word-break:break-all">{{ d.url }}</span>
+                  <button onClick="{{ d.onRemove }}" style="flex:none;width:22px;height:22px;border:none;background:#e9ebef;border-radius:5px;cursor:pointer;color:#667085;font-size:12px">✕</button>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#f6f7f9;border:1px solid #eceef1;border-radius:9px;padding:12px 14px">
+            <div>
+              <div style="font-size:13px;font-weight:600">규칙 활성화</div>
+              <div style="font-size:12px;color:#98a2b3">비활성 시 웹훅을 수신해도 재전송하지 않습니다.</div>
+            </div>
+            <div onClick="{{ onToggleDraftActive }}" style="{{ draftTrackStyle }}"><div style="{{ draftKnobStyle }}"></div></div>
+          </div>
+
+          </div>
+          </sc-if>
+        </div>
+        <div style="padding:16px 24px;border-top:1px solid #eceef1;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12px;color:#98a2b3">{{ modal_step_label }}</div>
+            <div style="display:flex;gap:10px">
+              <button onClick="{{ onCancel }}" style="background:#fff;border:1px solid #d0d5dd;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;color:#344054">취소</button>
+              <button onClick="{{ onNextStep }}" style="border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:600;color:#fff;background:var(--accent,#4f46e5);cursor:pointer">다음 →</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:12px;color:#dc2626">{{ save_hint }}</div>
+            <div style="display:flex;gap:10px">
+              <sc-if value="{{ canGoBack }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ onBackStep }}" style="background:#fff;border:1px solid #d0d5dd;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;color:#344054">← 이전</button>
+              </sc-if>
+              <button onClick="{{ onCancel }}" style="background:#fff;border:1px solid #d0d5dd;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;color:#344054">취소</button>
+              <button onClick="{{ onSaveDraft }}" disabled="{{ cantSave }}" style="{{ saveStyle }}">{{ save_label }}</button>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;},&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#4f46e5&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;모양&quot;},&quot;rowsPerPage&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:6,&quot;min&quot;:4,&quot;max&quot;:12,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;동작&quot;}}">
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.sources = {
+      gitlab: {
+        id:'gitlab', label:'GitLab', color:'#e2432a', initial:'G',
+        projectLabel:'대상 레포지토리', projectPlaceholder:'group/project 경로 입력',
+        authorLabel:'작성자 필터', authorPlaceholder:'@username 입력 후 Enter',
+        projects:['backend/api-gateway','backend/auth-service','frontend/web-app','frontend/admin-console','infra/terraform','data/etl-pipeline','mobile/ios-app','platform/notification'],
+        actions:[
+          {group:'Issue', color:'#2563eb', items:[{id:'issue.open'},{id:'issue.close'},{id:'issue.update'}]},
+          {group:'Merge Request', color:'#7c3aed', items:[{id:'mr.open'},{id:'mr.merge'},{id:'mr.close'}]},
+          {group:'Pipeline', color:'#d97706', items:[{id:'pipeline.success'},{id:'pipeline.failed'}]},
+        ],
+      },
+      sentry: {
+        id:'sentry', label:'Sentry', color:'#8b5cf6', initial:'S',
+        projectLabel:'대상 프로젝트', projectPlaceholder:'group/project 경로 입력',
+        authorLabel:'담당자(assignee) 필터', authorPlaceholder:'이메일 또는 username 입력 후 Enter',
+        projects:['sentry/api-prod','sentry/web-prod','sentry/web-staging','sentry/ios','sentry/android','sentry/worker'],
+        actions:[
+          {group:'Issue', color:'#2563eb', items:[{id:'issue.created'},{id:'issue.resolved'},{id:'issue.assigned'},{id:'issue.ignored'}]},
+          {group:'Alert', color:'#dc2626', items:[{id:'metric_alert.critical'},{id:'metric_alert.warning'},{id:'metric_alert.resolved'}]},
+          {group:'Release', color:'#0891b2', items:[{id:'release.created'},{id:'release.deployed'}]},
+        ],
+      },
+    };
+    this.state = {
+      rules: [], page: 1, query: '', selectedId: null,
+      modalOpen: false, editingId: null, step: 1,
+      draft: this.emptyDraft(), destInput: '', authorInput: '',
+    };
+    this.load();
+  }
+  async load(){
+    const res = await fetch('/api/rules');
+    if (res.status === 401) { location.href = '/login.html'; return; }
+    const rules = await res.json();
+    this.setState({ rules });
+  }
+  async api(method, url, body){
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (res.status === 401) { location.href = '/login.html'; return null; }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      window.alert(err.error || '요청 실패');
+      return null;
+    }
+    return res.status === 204 ? true : res.json();
+  }
+  emptyDraft(){ return {source:'gitlab',name:'',description:'',repo:'',actions:[],authors:[],destinations:[],active:true}; }
+
+  get accent(){ return this.props.accentColor || '#4f46e5'; }
+  get perPage(){ return this.props.rowsPerPage || 6; }
+  srcOf(key){ return this.sources[key]||this.sources.gitlab; }
+  colorFor(srcKey,id){ const g=this.srcOf(srcKey).actions.find(c=>c.items.some(i=>i.id===id)); return g?g.color:'#667085'; }
+  badgeStyle(color){ return "display:inline-flex;align-items:center;padding:2px 7px;border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;background:"+color+"14;color:"+color+";border:1px solid "+color+"33"; }
+
+  selectRule(id){ this.setState({selectedId:id}); }
+  async toggleActive(id){
+    const r = this.state.rules.find(x => x.id === id);
+    if (!r) return;
+    const updated = await this.api('PUT', '/api/rules/' + id, { ...r, active: !r.active });
+    if (updated) this.setState(s => ({ rules: s.rules.map(x => x.id === id ? updated : x) }));
+  }
+  async del(id){
+    if (!window.confirm('이 규칙을 삭제할까요?')) return;
+    if (await this.api('DELETE', '/api/rules/' + id)) {
+      this.setState(s => ({ rules: s.rules.filter(r => r.id !== id), selectedId: s.selectedId === id ? null : s.selectedId }));
+    }
+  }
+  openNew(){ this.setState({modalOpen:true,editingId:null,step:1,draft:this.emptyDraft(),destInput:'',authorInput:''}); }
+  openEdit(id){
+    const r = this.state.rules.find(x => x.id === id);
+    if (!r) return;
+    this.setState({
+      modalOpen: true, editingId: id, step: 2,
+      draft: { ...r, active: !!r.active, actions: [...r.actions], authors: [...r.authors], destinations: [...r.destinations] },
+      destInput: '', authorInput: '', selectedId: null,
+    });
+  }
+  cancel(){ this.setState({modalOpen:false,editingId:null,step:1,destInput:'',authorInput:''}); }
+  pickSource(key){ this.setState(s=>({draft:{...s.draft,source:key,repo:'',actions:[]}})); }
+  goStep2(){ this.setState({step:2}); }
+  backToSource(){ if(this.state.editingId) return; this.setState({step:1}); }
+  addAuthor(){ const v=(this.state.authorInput||'').trim(); if(!v) return; this.setState(s=>({draft:{...s.draft,authors:s.draft.authors.includes(v)?s.draft.authors:[...s.draft.authors,v]},authorInput:''})); }
+  removeAuthor(i){ this.setState(s=>({draft:{...s.draft,authors:s.draft.authors.filter((_,x)=>x!==i)}})); }
+  patchDraft(p){ this.setState(s=>({draft:{...s.draft,...p}})); }
+  toggleIn(arr,v){ return arr.includes(v)?arr.filter(x=>x!==v):[...arr,v]; }
+  addDest(){ const v=(this.state.destInput||'').trim(); if(!v) return; this.setState(s=>({draft:{...s.draft,destinations:[...s.draft.destinations,v]},destInput:''})); }
+  removeDest(i){ this.setState(s=>({draft:{...s.draft,destinations:s.draft.destinations.filter((_,x)=>x!==i)}})); }
+  canSave(){ const d=this.state.draft; return d.name.trim() && d.repo && d.actions.length>0 && d.destinations.length>0; }
+  async save(){
+    if (!this.canSave()) return;
+    const d = { ...this.state.draft, name: this.state.draft.name.trim() };
+    if (this.state.editingId) {
+      const updated = await this.api('PUT', '/api/rules/' + this.state.editingId, d);
+      if (updated) this.setState(s => ({ rules: s.rules.map(r => r.id === s.editingId ? updated : r), modalOpen: false, editingId: null }));
+    } else {
+      const created = await this.api('POST', '/api/rules', d);
+      if (created) this.setState(s => ({ rules: [created, ...s.rules], modalOpen: false, page: 1 }));
+    }
+  }
+
+  buildSample(r){
+    const first=r.actions[0]||'issue.open'; const [kind,action]=first.split('.');
+    const who=r.authors.length?r.authors[0].replace('@',''):'any_user';
+    if(r.source==='sentry'){
+      return JSON.stringify({source:'sentry',action:action,data:{issue:{id:'4507',title:'TypeError: undefined is not a function',culprit:'app/handlers.js'}},actor:{type:'user',name:who},project:{slug:r.repo}},null,2);
+    }
+    const km={issue:'issue',mr:'merge_request',pipeline:'pipeline'};
+    return JSON.stringify({object_kind:km[kind]||kind,event_type:km[kind]||kind,project:{path_with_namespace:r.repo,web_url:'https://gitlab.example.com/'+r.repo},user:{username:who},object_attributes:{action:action,state:action}},null,2);
+  }
+
+  renderVals(){
+    const accent=this.accent, s=this.state, perPage=this.perPage;
+    const q=(s.query||'').trim().toLowerCase();
+    const filtered=q?s.rules.filter(r=>(r.name+' '+r.description+' '+r.repo+' '+this.srcOf(r.source).label).toLowerCase().includes(q)):s.rules;
+    const totalPages=Math.max(1,Math.ceil(filtered.length/perPage));
+    const page=Math.min(s.page,totalPages);
+    const start=(page-1)*perPage;
+    const pageSlice=filtered.slice(start,start+perPage);
+
+    const pageRules=pageSlice.map(r=>{
+      const active=r.active, src=this.srcOf(r.source);
+      return {
+        ...r,
+        srcLabel:src.label,
+        srcInitial:src.initial,
+        srcChipStyle:'display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 3px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid '+src.color+'33;background:'+src.color+'14;color:'+src.color,
+        srcDotStyle:'width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;background:'+src.color,
+        actionBadges:r.actions.map(id=>({id,style:this.badgeStyle(this.colorFor(r.source,id))})),
+        authorText:r.authors.length?r.authors.join(', '):'모든 작성자',
+        trackStyle:'width:38px;height:22px;border-radius:999px;position:relative;cursor:pointer;transition:background .15s;flex:none;background:'+(active?accent:'#cbd5e1'),
+        knobStyle:'position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s;transform:translateX('+(active?'16px':'0')+')',
+        onSelect:()=>this.selectRule(r.id),
+        onToggle:(e)=>{e.stopPropagation();this.toggleActive(r.id);},
+        onEdit:(e)=>{e.stopPropagation();this.openEdit(r.id);},
+        onDelete:(e)=>{e.stopPropagation();this.del(r.id);},
+      };
+    });
+
+    const btnBase='border-radius:7px;padding:7px 12px;font-size:12px;font-weight:600;background:#fff;';
+    const prevOn=page>1, nextOn=page<totalPages;
+    const pageBtn=(on)=>btnBase+'border:1px solid '+(on?'#d0d5dd':'#eceef1')+';color:'+(on?'#344054':'#cbd5e1')+';cursor:'+(on?'pointer':'not-allowed');
+
+    // detail
+    const sel=s.rules.find(r=>r.id===s.selectedId);
+    let detail={};
+    if(sel){
+      const ssrc=this.srcOf(sel.source);
+      detail={
+        detail_name:sel.name,
+        detail_description:sel.description||'설명 없음',
+        detail_repo:sel.repo,
+        detail_srcLabel:ssrc.label,
+        detail_srcInitial:ssrc.initial,
+        detail_projectLabel:ssrc.projectLabel,
+        detail_authorLabel:ssrc.authorLabel,
+        detail_srcChipStyle:'display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 3px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid '+ssrc.color+'33;background:'+ssrc.color+'14;color:'+ssrc.color,
+        detail_srcDotStyle:'width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;background:'+ssrc.color,
+        detail_statusText:sel.active?'활성':'비활성',
+        detail_statusStyle:'font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;'+(sel.active?'background:#dcfce7;color:#16a34a':'background:#f2f4f7;color:#98a2b3'),
+        detail_actions:sel.actions.map(id=>({id,style:this.badgeStyle(this.colorFor(sel.source,id))})),
+        detail_authors:sel.authors.length?sel.authors.map(a=>({handle:a,initial:a.replace('@','').charAt(0).toUpperCase()})):[{handle:'모든 작성자 허용',initial:'∗'}],
+        detail_destinations:sel.destinations.map(url=>({url})),
+        detail_destCount:sel.destinations.length,
+        detail_sample:this.buildSample(sel),
+        detail_onEdit:()=>this.openEdit(sel.id),
+        detail_onDelete:()=>this.del(sel.id),
+      };
+    }
+
+    // modal
+    const d=s.draft;
+    const dsrc=this.srcOf(d.source);
+    const srcBlurb={gitlab:'이슈 · 머지 리퀘스트 · 파이프라인 이벤트',sentry:'이슈 · 메트릭 알럿 · 릴리즈 이벤트'};
+    const sourceOptions=Object.values(this.sources).map(src=>{const on=d.source===src.id;return {
+      label:src.label, initial:src.initial, blurb:srcBlurb[src.id]||'',
+      style:'flex:1;display:flex;flex-direction:column;gap:10px;padding:20px;border-radius:12px;cursor:pointer;user-select:none;transition:border-color .12s,background .12s;border:1.5px solid '+(on?src.color:'#e4e7ec')+';background:'+(on?src.color+'0d':'#fff'),
+      dotStyle:'width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#fff;background:'+(on?src.color:'#cbd5e1'),
+      labelStyle:'font-size:15px;font-weight:700;color:'+(on?src.color:'#344054'),
+      blurbStyle:'font-size:12px;color:'+(on?'#667085':'#98a2b3')+';line-height:1.45',
+      onPick:()=>this.pickSource(src.id),
+    };});
+    const lockedSrcStyle='display:inline-flex;align-items:center;gap:7px;padding:3px 11px 3px 4px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid '+dsrc.color+'33;background:'+dsrc.color+'14;color:'+dsrc.color;
+    const lockedDotStyle='width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;background:'+dsrc.color;
+    const actionGroups=dsrc.actions.map(g=>({
+      group:g.group, dotStyle:'width:8px;height:8px;border-radius:50%;display:inline-block;background:'+g.color,
+      items:g.items.map(it=>{const on=d.actions.includes(it.id);return {
+        raw:it.id,
+        style:"display:inline-flex;align-items:center;padding:7px 11px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:pointer;user-select:none;font-weight:"+(on?'600':'400')+";border:1px solid "+(on?g.color:'#e4e7ec')+";background:"+(on?g.color+'14':'#fff')+";color:"+(on?g.color:'#667085'),
+        onToggle:()=>this.patchDraft({actions:this.toggleIn(d.actions,it.id)}),
+      };}),
+    }));
+    const authorTags=d.authors.map((a,i)=>({
+      handle:a, initial:a.replace('@','').charAt(0).toUpperCase(),
+      avatarStyle:'width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;background:'+accent,
+      onRemove:()=>this.removeAuthor(i),
+    }));
+    const destItems=d.destinations.map((url,i)=>({url,onRemove:()=>this.removeDest(i)}));
+    const can=this.canSave();
+    const saveStyle='border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:600;color:#fff;background:'+(can?accent:'#c7cbd6')+';cursor:'+(can?'pointer':'not-allowed');
+
+    return {
+      accent,
+      stat_total:s.rules.length,
+      stat_active:s.rules.filter(r=>r.active).length,
+      stat_dest:s.rules.reduce((n,r)=>n+r.destinations.length,0),
+      query:s.query, onQuery:(e)=>this.setState({query:e.target.value,page:1}),
+      result_count:filtered.length,
+      onAddNew:()=>this.openNew(),
+      pageRules, isEmpty:filtered.length===0,
+      page_info:'전체 '+filtered.length+'개 중 '+(filtered.length?start+1:0)+'–'+Math.min(start+perPage,filtered.length),
+      page_label:page+' / '+totalPages,
+      onPrev:()=>prevOn&&this.setState({page:page-1}),
+      onNext:()=>nextOn&&this.setState({page:page+1}),
+      noPrev:!prevOn, noNext:!nextOn,
+      prevStyle:pageBtn(prevOn), nextStyle:pageBtn(nextOn),
+      stop:(e)=>e.stopPropagation(),
+      showDetail:!!sel, onCloseDetail:()=>this.setState({selectedId:null}),
+      ...detail,
+      modalOpen:s.modalOpen,
+      modal_title:s.editingId?'규칙 수정':'새 규칙 추가',
+      save_label:s.editingId?'변경 저장':'규칙 생성',
+      draft_name:d.name, onDraftName:(e)=>this.patchDraft({name:e.target.value}),
+      draft_description:d.description, onDraftDescription:(e)=>this.patchDraft({description:e.target.value}),
+      draft_repo:d.repo, onDraftRepo:(e)=>this.patchDraft({repo:e.target.value}),
+      draft_projectLabel:dsrc.projectLabel,
+      draft_projectPlaceholder:dsrc.projectPlaceholder,
+      draft_authorLabel:dsrc.authorLabel,
+      draft_authorPlaceholder:dsrc.authorPlaceholder,
+      sourceOptions,
+      isStep1:s.modalOpen&&s.step===1,
+      isStep2:s.modalOpen&&s.step===2,
+      canGoBack:!s.editingId,
+      modal_step_label:s.editingId?'':(s.step===1?'1 / 2 · 소스 선택':'2 / 2 · 필터 설정'),
+      draft_srcLabel:dsrc.label,
+      draft_srcInitial:dsrc.initial,
+      lockedSrcStyle, lockedDotStyle,
+      lockedNote:s.editingId?'소스는 생성 후 변경할 수 없습니다. 변경하려면 삭제 후 다시 생성하세요.':'소스를 바꾸려면 이전 단계로 돌아가세요.',
+      onNextStep:()=>this.goStep2(),
+      onBackStep:()=>this.backToSource(),
+      authorInput:s.authorInput,
+      onAuthorInput:(e)=>this.setState({authorInput:e.target.value}),
+      onAuthorKey:(e)=>{if(e.key==='Enter'){e.preventDefault();this.addAuthor();}},
+      onAddAuthor:()=>this.addAuthor(),
+      hasAuthors:d.authors.length>0,
+      actionGroups, authorTags, destItems,
+      destInput:s.destInput, onDestInput:(e)=>this.setState({destInput:e.target.value}),
+      onDestKey:(e)=>{if(e.key==='Enter'){e.preventDefault();this.addDest();}},
+      onAddDest:()=>this.addDest(),
+      onToggleDraftActive:()=>this.patchDraft({active:!d.active}),
+      draftTrackStyle:'width:42px;height:24px;border-radius:999px;position:relative;cursor:pointer;flex:none;transition:background .15s;background:'+(d.active?accent:'#cbd5e1'),
+      draftKnobStyle:'position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s;transform:translateX('+(d.active?'18px':'0')+')',
+      onCancel:()=>this.cancel(), onSaveDraft:()=>this.save(),
+      cantSave:!can, saveStyle,
+      save_hint: can?'':'이름 · '+dsrc.projectLabel.replace('대상 ','')+' · Action · URL은 필수입니다',
+    };
+  }
+}
+</script>
+</body>
+</html>
