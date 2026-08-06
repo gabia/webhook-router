@@ -36,6 +36,29 @@ export function createApp(db, env, { testSession } = {}) {
 
   app.get('/api/rules', requireAuth, (req, res) => res.json(listRules(db, req.userId)));
 
+  // GitLab 프로젝트 typeahead — 토큰 미설정 시 빈 목록 (자동완성만 비활성)
+  app.get('/api/gitlab/projects', requireAuth, async (req, res) => {
+    const q = (req.query.q ?? '').toString().trim();
+    if (!q || !env.GITLAB_URL || !env.GITLAB_TOKEN) return res.json([]);
+    try {
+      const u = new URL('/api/v4/projects', env.GITLAB_URL);
+      u.searchParams.set('search', q);
+      u.searchParams.set('simple', 'true');
+      u.searchParams.set('per_page', '20');
+      u.searchParams.set('order_by', 'similarity');
+      const glRes = await fetch(u, {
+        headers: { 'PRIVATE-TOKEN': env.GITLAB_TOKEN },
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (!glRes.ok) throw new Error(`gitlab ${glRes.status}`);
+      const projects = await glRes.json();
+      res.json(projects.map(p => p.path_with_namespace));
+    } catch (err) {
+      console.error('gitlab 프로젝트 검색 실패:', err.message);
+      res.status(502).json({ error: 'GitLab 조회 실패' });
+    }
+  });
+
   app.post('/api/rules', requireAuth, (req, res) => {
     const v = validateRule(req.body);
     if (!v.ok) return res.status(400).json({ error: v.error });

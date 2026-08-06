@@ -218,7 +218,12 @@
             </div>
             <div>
               <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:6px">{{ draft_projectLabel }} <span style="color:#dc2626">*</span></label>
-              <input value="{{ draft_repo }}" onChange="{{ onDraftRepo }}" placeholder="{{ draft_projectPlaceholder }}" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
+              <input value="{{ draft_repo }}" onChange="{{ onDraftRepo }}" list="repo-suggest" placeholder="{{ draft_projectPlaceholder }}" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
+              <datalist id="repo-suggest">
+                <sc-for list="{{ repoSuggestions }}" as="r" hint-placeholder-count="0">
+                  <option value="{{ r.value }}"></option>
+                </sc-for>
+              </datalist>
             </div>
           </div>
 
@@ -345,8 +350,20 @@ class Component extends DCLogic {
       rules: [], page: 1, query: '', selectedId: null,
       modalOpen: false, editingId: null, step: 1,
       draft: this.emptyDraft(), destInput: '', authorInput: '',
+      repoSuggestions: [],
     };
     this.load();
+  }
+  suggestRepos(q){
+    clearTimeout(this._repoTimer);
+    if (!q || !q.trim() || this.state.draft.source !== 'gitlab') {
+      this.setState({ repoSuggestions: [] });
+      return;
+    }
+    this._repoTimer = setTimeout(async () => {
+      const res = await fetch('/api/gitlab/projects?q=' + encodeURIComponent(q.trim()));
+      if (res.ok) this.setState({ repoSuggestions: await res.json() });
+    }, 250);
   }
   async load(){
     const res = await fetch('/api/rules');
@@ -545,7 +562,8 @@ class Component extends DCLogic {
       save_label:s.editingId?'변경 저장':'규칙 생성',
       draft_name:d.name, onDraftName:(e)=>this.patchDraft({name:e.target.value}),
       draft_description:d.description, onDraftDescription:(e)=>this.patchDraft({description:e.target.value}),
-      draft_repo:d.repo, onDraftRepo:(e)=>this.patchDraft({repo:e.target.value}),
+      draft_repo:d.repo, onDraftRepo:(e)=>{this.patchDraft({repo:e.target.value});this.suggestRepos(e.target.value);},
+      repoSuggestions:s.repoSuggestions.map(v=>({value:v})),
       draft_projectLabel:dsrc.projectLabel,
       draft_projectPlaceholder:dsrc.projectPlaceholder,
       draft_authorLabel:dsrc.authorLabel,
