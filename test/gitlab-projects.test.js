@@ -94,3 +94,34 @@ test('gitlab error → 502 json', async () => {
   server.close(); gitlab.close();
   assert.equal(res.status, 502);
 });
+
+test('users search proxies to gitlab and returns username+name, max 5', async () => {
+  const seen = [];
+  const gitlab = http.createServer((req, res) => {
+    seen.push(req);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify([
+      { id: 1, username: 'dohyun.kim', name: '김도현', avatar_url: 'x' },
+      { id: 2, username: 'dohee.lee', name: '이도희', avatar_url: 'y' },
+    ]));
+  });
+  gitlab.listen(0);
+  await once(gitlab, 'listening');
+  const { server, base } = await startApp({
+    ...baseEnv,
+    GITLAB_API_URL: `http://127.0.0.1:${gitlab.address().port}/api/v4`,
+    GITLAB_TOKEN: 't',
+  });
+  const res = await fetch(`${base}/api/gitlab/users?q=do`);
+  const body = await res.json();
+  server.close(); gitlab.close();
+  assert.equal(res.status, 200);
+  assert.deepEqual(body, [
+    { username: 'dohyun.kim', name: '김도현' },
+    { username: 'dohee.lee', name: '이도희' },
+  ]);
+  const u = new URL(seen[0].url, 'http://x');
+  assert.equal(u.pathname, '/api/v4/users');
+  assert.equal(u.searchParams.get('search'), 'do');
+  assert.equal(u.searchParams.get('per_page'), '5');
+});

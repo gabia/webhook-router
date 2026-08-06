@@ -12,7 +12,7 @@ const COLOR = {
   'mr.merge': GREEN,
 };
 
-const bare = (a) => a.replace(/^@/, '');
+const bare = (a) => a.replace(/^@/, '').toLowerCase();
 
 export function matchRules(rules, event) {
   return rules.filter(r =>

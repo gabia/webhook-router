@@ -218,12 +218,16 @@
             </div>
             <div>
               <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:6px">{{ draft_projectLabel }} <span style="color:#dc2626">*</span></label>
-              <input value="{{ draft_repo }}" onChange="{{ onDraftRepo }}" list="repo-suggest" placeholder="{{ draft_projectPlaceholder }}" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
-              <datalist id="repo-suggest">
-                <sc-for list="{{ repoSuggestions }}" as="r" hint-placeholder-count="0">
-                  <option value="{{ r.value }}"></option>
-                </sc-for>
-              </datalist>
+              <div style="position:relative">
+                <input value="{{ draft_repo }}" onChange="{{ onDraftRepo }}" placeholder="{{ draft_projectPlaceholder }}" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
+                <sc-if value="{{ hasRepoSuggestions }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #d0d5dd;border-radius:8px;box-shadow:0 8px 20px rgba(16,20,30,.12);z-index:60;overflow:hidden">
+                    <sc-for list="{{ repoSuggestions }}" as="r" hint-placeholder-count="0">
+                      <div onClick="{{ r.onPick }}" style="padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#475467;cursor:pointer" style-hover="background:#f6f7f9">{{ r.value }}</div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
             </div>
           </div>
 
@@ -251,7 +255,16 @@
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">{{ draft_authorLabel }} <span style="font-weight:400;color:#98a2b3">· 비워두면 모든 작성자 허용</span></label>
             <div style="display:flex;gap:8px;margin-bottom:8px">
-              <input value="{{ authorInput }}" onChange="{{ onAuthorInput }}" onKeyDown="{{ onAuthorKey }}" placeholder="{{ draft_authorPlaceholder }}" style="flex:1;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
+              <div style="position:relative;flex:1">
+                <input value="{{ authorInput }}" onChange="{{ onAuthorInput }}" onKeyDown="{{ onAuthorKey }}" placeholder="{{ draft_authorPlaceholder }}" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
+                <sc-if value="{{ hasAuthorSuggestions }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #d0d5dd;border-radius:8px;box-shadow:0 8px 20px rgba(16,20,30,.12);z-index:60;overflow:hidden">
+                    <sc-for list="{{ authorSuggestions }}" as="a" hint-placeholder-count="0">
+                      <div onClick="{{ a.onPick }}" style="padding:8px 12px;font-size:12px;color:#475467;cursor:pointer;display:flex;align-items:center;gap:8px" style-hover="background:#f6f7f9"><span style="font-family:'IBM Plex Mono',monospace">{{ a.username }}</span><span style="color:#98a2b3">{{ a.name }}</span></div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
               <button onClick="{{ onAddAuthor }}" style="flex:none;background:#eef0f4;border:1px solid #d0d5dd;border-radius:8px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer;color:#344054">추가</button>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -350,7 +363,7 @@ class Component extends DCLogic {
       rules: [], page: 1, query: '', selectedId: null,
       modalOpen: false, editingId: null, step: 1,
       draft: this.emptyDraft(), destInput: '', authorInput: '',
-      repoSuggestions: [],
+      repoSuggestions: [], authorSuggestions: [],
     };
     this.load();
   }
@@ -364,6 +377,28 @@ class Component extends DCLogic {
       const res = await fetch('/api/gitlab/projects?q=' + encodeURIComponent(q.trim()));
       if (res.ok) this.setState({ repoSuggestions: await res.json() });
     }, 250);
+  }
+  pickRepo(v){
+    clearTimeout(this._repoTimer);
+    this.setState(s => ({ draft: { ...s.draft, repo: v }, repoSuggestions: [] }));
+  }
+  suggestAuthors(q){
+    clearTimeout(this._authorTimer);
+    if (!q || !q.trim() || this.state.draft.source !== 'gitlab') {
+      this.setState({ authorSuggestions: [] });
+      return;
+    }
+    this._authorTimer = setTimeout(async () => {
+      const res = await fetch('/api/gitlab/users?q=' + encodeURIComponent(q.trim()));
+      if (res.ok) this.setState({ authorSuggestions: await res.json() });
+    }, 250);
+  }
+  pickAuthor(username){
+    clearTimeout(this._authorTimer);
+    this.setState(s => ({
+      draft: { ...s.draft, authors: s.draft.authors.includes(username) ? s.draft.authors : [...s.draft.authors, username] },
+      authorInput: '', authorSuggestions: [],
+    }));
   }
   async load(){
     const res = await fetch('/api/rules');
@@ -416,7 +451,7 @@ class Component extends DCLogic {
       destInput: '', authorInput: '', selectedId: null,
     });
   }
-  cancel(){ this.setState({modalOpen:false,editingId:null,step:1,destInput:'',authorInput:''}); }
+  cancel(){ this.setState({modalOpen:false,editingId:null,step:1,destInput:'',authorInput:'',repoSuggestions:[],authorSuggestions:[]}); }
   pickSource(key){ this.setState(s=>({draft:{...s.draft,source:key,repo:'',actions:[]}})); }
   goStep2(){ this.setState({step:2}); }
   backToSource(){ if(this.state.editingId) return; this.setState({step:1}); }
@@ -563,7 +598,10 @@ class Component extends DCLogic {
       draft_name:d.name, onDraftName:(e)=>this.patchDraft({name:e.target.value}),
       draft_description:d.description, onDraftDescription:(e)=>this.patchDraft({description:e.target.value}),
       draft_repo:d.repo, onDraftRepo:(e)=>{this.patchDraft({repo:e.target.value});this.suggestRepos(e.target.value);},
-      repoSuggestions:s.repoSuggestions.map(v=>({value:v})),
+      repoSuggestions:s.repoSuggestions.map(v=>({value:v,onPick:()=>this.pickRepo(v)})),
+      hasRepoSuggestions:s.repoSuggestions.length>0,
+      authorSuggestions:s.authorSuggestions.map(u=>({username:u.username,name:u.name,onPick:()=>this.pickAuthor(u.username)})),
+      hasAuthorSuggestions:s.authorSuggestions.length>0,
       draft_projectLabel:dsrc.projectLabel,
       draft_projectPlaceholder:dsrc.projectPlaceholder,
       draft_authorLabel:dsrc.authorLabel,
@@ -580,7 +618,7 @@ class Component extends DCLogic {
       onNextStep:()=>this.goStep2(),
       onBackStep:()=>this.backToSource(),
       authorInput:s.authorInput,
-      onAuthorInput:(e)=>this.setState({authorInput:e.target.value}),
+      onAuthorInput:(e)=>{this.setState({authorInput:e.target.value});this.suggestAuthors(e.target.value);},
       onAuthorKey:(e)=>{if(e.key==='Enter'){e.preventDefault();this.addAuthor();}},
       onAddAuthor:()=>this.addAuthor(),
       hasAuthors:d.authors.length>0,

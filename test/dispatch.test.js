@@ -55,3 +55,8 @@ test('text is truncated to 4000 chars', () => {
   const msg = formatMessage({ ...event, title: 'x'.repeat(6000) });
   assert.ok(msg.text.length <= 4000);
 });
+
+test('author filter is case-insensitive', () => {
+  assert.equal(matchRules([rule({ authors: ['@DoHyun'] })], event).length, 1);
+  assert.equal(matchRules([rule({ authors: ['dohyun'] })], { ...event, author: 'DOHYUN' }).length, 1);
+});

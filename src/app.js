@@ -45,7 +45,7 @@ export function createApp(db, env, { testSession } = {}) {
       const u = new URL(`${env.GITLAB_API_URL.replace(/\/$/, '')}/projects`);
       u.searchParams.set('search', q);
       u.searchParams.set('simple', 'true');
-      u.searchParams.set('per_page', '20');
+      u.searchParams.set('per_page', '5');
       u.searchParams.set('order_by', 'similarity');
       const glRes = await fetch(u, {
         headers: {
@@ -59,6 +59,31 @@ export function createApp(db, env, { testSession } = {}) {
       res.json(projects.map(p => p.path_with_namespace));
     } catch (err) {
       console.error('gitlab 프로젝트 검색 실패:', err.message);
+      res.status(502).json({ error: 'GitLab 조회 실패' });
+    }
+  });
+
+  // GitLab 사용자(LDAP 계정) typeahead — 작성자 필터용
+  app.get('/api/gitlab/users', requireAuth, async (req, res) => {
+    const q = (req.query.q ?? '').toString().trim();
+    if (!q || !env.GITLAB_API_URL || !env.GITLAB_TOKEN) return res.json([]);
+    try {
+      const u = new URL(`${env.GITLAB_API_URL.replace(/\/$/, '')}/users`);
+      u.searchParams.set('search', q);
+      u.searchParams.set('per_page', '5');
+      u.searchParams.set('active', 'true');
+      const glRes = await fetch(u, {
+        headers: {
+          Authorization: `Bearer ${env.GITLAB_TOKEN}`,
+          'PRIVATE-TOKEN': env.GITLAB_TOKEN,
+        },
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (!glRes.ok) throw new Error(`gitlab ${glRes.status}`);
+      const users = await glRes.json();
+      res.json(users.map(({ username, name }) => ({ username, name })));
+    } catch (err) {
+      console.error('gitlab 사용자 검색 실패:', err.message);
       res.status(502).json({ error: 'GitLab 조회 실패' });
     }
   });
