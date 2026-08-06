@@ -1,11 +1,13 @@
 import { Router } from 'express';
+import { randomBytes } from 'node:crypto';
 import { upsertUser } from './rules-db.js';
 
-export function buildAuthorizeUrl(env) {
+export function buildAuthorizeUrl(env, state) {
   const u = new URL('/oauth/authorize', env.AUTH_URL);
   u.searchParams.set('response_type', 'code');
   u.searchParams.set('client_id', env.HIWORKS_CLIENT_ID);
   u.searchParams.set('redirect_uri', env.REDIRECT_URI);
+  if (state) u.searchParams.set('state', state);
   return u.toString();
 }
 
@@ -21,10 +23,19 @@ export function requireAuth(req, res, next) {
 export function authRouter(db, env) {
   const router = Router();
 
-  router.get('/login', (req, res) => res.redirect(buildAuthorizeUrl(env)));
+  router.get('/login', (req, res) => {
+    const state = randomBytes(16).toString('hex');
+    req.session.oauthState = state;
+    res.redirect(buildAuthorizeUrl(env, state));
+  });
 
   router.get('/auth/callback', async (req, res) => {
     const { code } = req.query;
+    const expectedState = req.session.oauthState;
+    req.session.oauthState = null;
+    if (!req.query.state || req.query.state !== expectedState) {
+      return res.status(400).send('state 불일치');
+    }
     if (!code) return res.status(400).send('code 누락');
     try {
       const body = new URLSearchParams({
@@ -49,6 +60,9 @@ export function authRouter(db, env) {
       if (!meRes.ok) throw new Error(`me ${meRes.status}`);
       const meBody = await meRes.json();
       const me = meBody.data ?? meBody;
+      if (me.office_user_no == null && me.user_no == null) {
+        throw new Error('me 응답에 사용자 식별자 없음');
+      }
 
       const user = upsertUser(db, {
         office_user_no: String(me.office_user_no ?? me.user_no),

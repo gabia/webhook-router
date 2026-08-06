@@ -10,7 +10,7 @@ cp .env.example .env   # 값 채우기
 npm start              # http://127.0.0.1:3000
 ```
 
-Node 20.6+ 필요 (`--env-file`).
+Node 22 LTS 이상 필요 (`--env-file` 및 `node --test`의 glob 인자 지원).
 
 ## 테스트
 

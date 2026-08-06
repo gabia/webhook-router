@@ -16,6 +16,11 @@ test('buildAuthorizeUrl composes oauth authorize URL', () => {
   assert.equal(u.searchParams.get('redirect_uri'), env.REDIRECT_URI);
 });
 
+test('buildAuthorizeUrl includes state when provided', () => {
+  const u = new URL(buildAuthorizeUrl(env, 'abc'));
+  assert.equal(u.searchParams.get('state'), 'abc');
+});
+
 function fakeRes() {
   return {
     statusCode: 200, redirected: null, body: null,
