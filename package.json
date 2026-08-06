@@ -2,6 +2,9 @@
   "name": "webhook-middleware",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node --env-file=.env src/server.js",
     "test": "node --test 'test/**/*.test.js'"
