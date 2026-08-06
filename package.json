@@ -1,0 +1,14 @@
+{
+  "name": "webhook-middleware",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test 'test/**/*.test.js'"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "cookie-session": "^2.1.1",
+    "express": "^5.2.1"
+  }
+}
