@@ -238,15 +238,20 @@
 
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">허용 Actions <span style="color:#dc2626">*</span></label>
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <sc-for list="{{ actionGroups }}" as="g" hint-placeholder-count="3">
-                <div>
-                  <div style="font-size:11px;font-weight:600;color:#98a2b3;margin-bottom:6px;display:flex;align-items:center;gap:6px"><span style="{{ g.dotStyle }}"></span>{{ g.group }}</div>
-                  <div style="display:flex;flex-wrap:wrap;gap:6px">
-                    <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
-                      <div onClick="{{ it.onToggle }}" style="{{ it.style }}">{{ it.raw }}</div>
-                    </sc-for>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <sc-for list="{{ actionGroups }}" as="g" hint-placeholder-count="4">
+                <div style="position:relative">
+                  <div onClick="{{ g.onToggleOpen }}" style="{{ g.buttonStyle }}">
+                    <span style="display:flex;align-items:center;gap:6px;min-width:0"><span style="{{ g.dotStyle }}"></span><span style="font-size:12px;font-weight:600;color:#344054;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ g.group }}</span></span>
+                    <span style="{{ g.summaryStyle }}">{{ g.summary }} ▾</span>
                   </div>
+                  <sc-if value="{{ g.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #d0d5dd;border-radius:8px;box-shadow:0 8px 20px rgba(16,20,30,.12);z-index:70;overflow:hidden">
+                      <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
+                        <div onClick="{{ it.onToggle }}" style="{{ it.style }}"><span style="{{ it.checkStyle }}">✓</span><span style="font-family:'IBM Plex Mono',monospace">{{ it.raw }}</span></div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
                 </div>
               </sc-for>
             </div>
@@ -342,9 +347,17 @@ class Component extends DCLogic {
         authorLabel:'작성자 필터', authorPlaceholder:'이름/사번 검색 후 선택',
         projects:['backend/api-gateway','backend/auth-service','frontend/web-app','frontend/admin-console','infra/terraform','data/etl-pipeline','mobile/ios-app','platform/notification'],
         actions:[
-          {group:'Issue', color:'#2563eb', items:[{id:'issue.open'},{id:'issue.close'},{id:'issue.update'}]},
-          {group:'Merge Request', color:'#7c3aed', items:[{id:'mr.open'},{id:'mr.merge'},{id:'mr.close'}]},
-          {group:'Pipeline', color:'#d97706', items:[{id:'pipeline.success'},{id:'pipeline.failed'}]},
+          {group:'Push', color:'#16a34a', items:[{id:'push'},{id:'tag_push'}]},
+          {group:'Comments', color:'#64748b', items:[{id:'note.commit'},{id:'note.merge_request'},{id:'note.issue'},{id:'note.snippet'},{id:'confidential_note'}]},
+          {group:'Issue', color:'#2563eb', items:[{id:'issue.open'},{id:'issue.close'},{id:'issue.reopen'},{id:'issue.update'}]},
+          {group:'Confidential Issue', color:'#1d4ed8', items:[{id:'confidential_issue.open'},{id:'confidential_issue.close'},{id:'confidential_issue.reopen'},{id:'confidential_issue.update'}]},
+          {group:'Merge Request', color:'#7c3aed', items:[{id:'mr.open'},{id:'mr.merge'},{id:'mr.close'},{id:'mr.reopen'},{id:'mr.update'},{id:'mr.approved'},{id:'mr.unapproved'}]},
+          {group:'Job', color:'#b45309', items:[{id:'job.success'},{id:'job.failed'},{id:'job.canceled'},{id:'job.running'}]},
+          {group:'Pipeline', color:'#d97706', items:[{id:'pipeline.success'},{id:'pipeline.failed'},{id:'pipeline.canceled'},{id:'pipeline.running'}]},
+          {group:'Wiki', color:'#0891b2', items:[{id:'wiki.create'},{id:'wiki.update'},{id:'wiki.delete'}]},
+          {group:'Deployment', color:'#9333ea', items:[{id:'deployment.success'},{id:'deployment.failed'},{id:'deployment.canceled'},{id:'deployment.running'}]},
+          {group:'Feature Flag', color:'#ca8a04', items:[{id:'feature_flag'}]},
+          {group:'Release', color:'#0e7490', items:[{id:'release.create'},{id:'release.update'}]},
         ],
       },
       sentry: {
@@ -364,7 +377,7 @@ class Component extends DCLogic {
       modalOpen: false, editingId: null, step: 1,
       draft: this.emptyDraft(), destInput: '', authorInput: '',
       repoSuggestions: [], authorSuggestions: [],
-      repoActiveIdx: 0, authorActiveIdx: 0, repoPicked: false,
+      repoActiveIdx: 0, authorActiveIdx: 0, repoPicked: false, openActionGroup: null,
     };
     this.load();
   }
@@ -459,7 +472,7 @@ class Component extends DCLogic {
       this.setState(s => ({ rules: s.rules.filter(r => r.id !== id), selectedId: s.selectedId === id ? null : s.selectedId }));
     }
   }
-  openNew(){ this.setState({modalOpen:true,editingId:null,step:1,draft:this.emptyDraft(),destInput:'',authorInput:'',repoSuggestions:[],authorSuggestions:[],repoActiveIdx:0,authorActiveIdx:0,repoPicked:false}); }
+  openNew(){ this.setState({modalOpen:true,editingId:null,step:1,draft:this.emptyDraft(),destInput:'',authorInput:'',repoSuggestions:[],authorSuggestions:[],repoActiveIdx:0,authorActiveIdx:0,repoPicked:false,openActionGroup:null}); }
   openEdit(id){
     const r = this.state.rules.find(x => x.id === id);
     if (!r) return;
@@ -467,10 +480,10 @@ class Component extends DCLogic {
       modalOpen: true, editingId: id, step: 2,
       draft: { ...r, active: !!r.active, actions: [...r.actions], authors: [...r.authors], destinations: [...r.destinations] },
       destInput: '', authorInput: '', selectedId: null,
-      repoSuggestions: [], authorSuggestions: [], repoActiveIdx: 0, authorActiveIdx: 0, repoPicked: true,
+      repoSuggestions: [], authorSuggestions: [], repoActiveIdx: 0, authorActiveIdx: 0, repoPicked: true, openActionGroup: null,
     });
   }
-  cancel(){ this.setState({modalOpen:false,editingId:null,step:1,destInput:'',authorInput:'',repoSuggestions:[],authorSuggestions:[]}); }
+  cancel(){ this.setState({modalOpen:false,editingId:null,step:1,destInput:'',authorInput:'',repoSuggestions:[],authorSuggestions:[],openActionGroup:null}); }
   pickSource(key){ this.setState(s=>({draft:{...s.draft,source:key,repo:'',actions:[]}})); }
   goStep2(){ this.setState({step:2}); }
   backToSource(){ if(this.state.editingId) return; this.setState({step:1}); }
@@ -576,14 +589,24 @@ class Component extends DCLogic {
     };});
     const lockedSrcStyle='display:inline-flex;align-items:center;gap:7px;padding:3px 11px 3px 4px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid '+dsrc.color+'33;background:'+dsrc.color+'14;color:'+dsrc.color;
     const lockedDotStyle='width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;background:'+dsrc.color;
-    const actionGroups=dsrc.actions.map(g=>({
-      group:g.group, dotStyle:'width:8px;height:8px;border-radius:50%;display:inline-block;background:'+g.color,
-      items:g.items.map(it=>{const on=d.actions.includes(it.id);return {
-        raw:it.id,
-        style:"display:inline-flex;align-items:center;padding:7px 11px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:pointer;user-select:none;font-weight:"+(on?'600':'400')+";border:1px solid "+(on?g.color:'#e4e7ec')+";background:"+(on?g.color+'14':'#fff')+";color:"+(on?g.color:'#667085'),
-        onToggle:()=>this.patchDraft({actions:this.toggleIn(d.actions,it.id)}),
-      };}),
-    }));
+    const actionGroups=dsrc.actions.map(g=>{
+      const selCount=g.items.filter(it=>d.actions.includes(it.id)).length;
+      const open=s.openActionGroup===g.group;
+      return {
+        group:g.group, open,
+        dotStyle:'width:8px;height:8px;border-radius:50%;display:inline-block;flex:none;background:'+g.color,
+        onToggleOpen:()=>this.setState(st=>({openActionGroup:st.openActionGroup===g.group?null:g.group})),
+        buttonStyle:'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:8px;cursor:pointer;user-select:none;transition:border-color .12s;border:1px solid '+(selCount?g.color:(open?'#d0d5dd':'#e4e7ec'))+';background:'+(selCount?g.color+'0d':'#fff'),
+        summaryStyle:"flex:none;font-size:11px;font-family:'IBM Plex Mono',monospace;color:"+(selCount?g.color:'#98a2b3'),
+        summary:selCount?selCount+'개 선택':'선택 안 함',
+        items:g.items.map(it=>{const on=d.actions.includes(it.id);return {
+          raw:it.id,
+          style:'display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;cursor:pointer;user-select:none;color:'+(on?g.color:'#475467')+';background:'+(on?g.color+'0d':'#fff'),
+          checkStyle:'width:14px;flex:none;font-size:11px;color:'+(on?g.color:'transparent'),
+          onToggle:(e)=>{e.stopPropagation();this.patchDraft({actions:this.toggleIn(d.actions,it.id)});},
+        };}),
+      };
+    });
     const authorTags=d.authors.map((a,i)=>({
       handle:a, initial:a.replace('@','').charAt(0).toUpperCase(),
       avatarStyle:'width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;background:'+accent,

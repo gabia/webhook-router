@@ -60,3 +60,10 @@ test('author filter is case-insensitive', () => {
   assert.equal(matchRules([rule({ authors: ['@DoHyun'] })], event).length, 1);
   assert.equal(matchRules([rule({ authors: ['dohyun'] })], { ...event, author: 'DOHYUN' }).length, 1);
 });
+
+test('canceled/failed variants red, job/deployment success green', () => {
+  assert.equal(formatMessage({ ...event, action: 'pipeline.canceled' }).cards[0].color, '#E01E5A');
+  assert.equal(formatMessage({ ...event, action: 'job.failed' }).cards[0].color, '#E01E5A');
+  assert.equal(formatMessage({ ...event, action: 'deployment.success' }).cards[0].color, '#2EB67D');
+  assert.equal(formatMessage({ ...event, action: 'push' }).cards[0].color, '#36C5F0');
+});

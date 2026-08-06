@@ -1,16 +1,29 @@
 import { findActiveRules, logDelivery } from './rules-db.js';
 
 const ACTION_LABEL = {
-  'issue.open': '이슈 생성', 'issue.close': '이슈 종료', 'issue.update': '이슈 변경',
-  'mr.open': 'MR 생성', 'mr.merge': 'MR 병합', 'mr.close': 'MR 닫힘',
+  push: '푸시', tag_push: '태그 푸시',
+  'note.commit': '커밋 댓글', 'note.merge_request': 'MR 댓글', 'note.issue': '이슈 댓글', 'note.snippet': '스니펫 댓글',
+  confidential_note: '비공개 댓글',
+  'issue.open': '이슈 생성', 'issue.close': '이슈 종료', 'issue.reopen': '이슈 재오픈', 'issue.update': '이슈 변경',
+  'confidential_issue.open': '비공개 이슈 생성', 'confidential_issue.close': '비공개 이슈 종료',
+  'confidential_issue.reopen': '비공개 이슈 재오픈', 'confidential_issue.update': '비공개 이슈 변경',
+  'mr.open': 'MR 생성', 'mr.merge': 'MR 병합', 'mr.close': 'MR 닫힘', 'mr.reopen': 'MR 재오픈',
+  'mr.update': 'MR 변경', 'mr.approved': 'MR 승인', 'mr.unapproved': 'MR 승인 취소',
+  'job.success': '잡 성공', 'job.failed': '잡 실패', 'job.canceled': '잡 취소', 'job.running': '잡 실행',
   'pipeline.success': '파이프라인 성공', 'pipeline.failed': '파이프라인 실패',
+  'pipeline.canceled': '파이프라인 취소', 'pipeline.running': '파이프라인 실행',
+  'wiki.create': '위키 생성', 'wiki.update': '위키 수정', 'wiki.delete': '위키 삭제',
+  'deployment.success': '배포 성공', 'deployment.failed': '배포 실패',
+  'deployment.canceled': '배포 취소', 'deployment.running': '배포 시작',
+  feature_flag: '피처 플래그 변경',
+  'release.create': '릴리즈 생성', 'release.update': '릴리즈 수정',
 };
 const GREEN = '#2EB67D', BLUE = '#36C5F0', RED = '#E01E5A';
-const COLOR = {
-  'pipeline.failed': RED,
-  'pipeline.success': GREEN,
-  'mr.merge': GREEN,
-};
+function colorFor(action) {
+  if (action.endsWith('.failed') || action.endsWith('.canceled')) return RED;
+  if (action.endsWith('.success') || action === 'mr.merge' || action === 'mr.approved') return GREEN;
+  return BLUE;
+}
 
 const bare = (a) => a.replace(/^@/, '').toLowerCase();
 
@@ -30,7 +43,7 @@ export function formatMessage(event) {
   return {
     text,
     cards: [{
-      color: COLOR[event.action] ?? BLUE,
+      color: colorFor(event.action),
       items: [
         { label: '프로젝트', content: event.repo },
         { label: '작성자', content: `@${event.author}` },
