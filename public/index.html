@@ -219,11 +219,11 @@
             <div>
               <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:6px">{{ draft_projectLabel }} <span style="color:#dc2626">*</span></label>
               <div style="position:relative">
-                <input value="{{ draft_repo }}" onChange="{{ onDraftRepo }}" placeholder="{{ draft_projectPlaceholder }}" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
+                <input value="{{ draft_repo }}" onChange="{{ onDraftRepo }}" onKeyDown="{{ onRepoKey }}" placeholder="{{ draft_projectPlaceholder }}" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
                 <sc-if value="{{ hasRepoSuggestions }}" hint-placeholder-val="{{ false }}">
                   <div style="position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #d0d5dd;border-radius:8px;box-shadow:0 8px 20px rgba(16,20,30,.12);z-index:60;overflow:hidden">
                     <sc-for list="{{ repoSuggestions }}" as="r" hint-placeholder-count="0">
-                      <div onClick="{{ r.onPick }}" style="padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#475467;cursor:pointer" style-hover="background:#f6f7f9">{{ r.value }}</div>
+                      <div onClick="{{ r.onPick }}" style="{{ r.style }}" style-hover="background:#f6f7f9">{{ r.value }}</div>
                     </sc-for>
                   </div>
                 </sc-if>
@@ -260,7 +260,7 @@
                 <sc-if value="{{ hasAuthorSuggestions }}" hint-placeholder-val="{{ false }}">
                   <div style="position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #d0d5dd;border-radius:8px;box-shadow:0 8px 20px rgba(16,20,30,.12);z-index:60;overflow:hidden">
                     <sc-for list="{{ authorSuggestions }}" as="a" hint-placeholder-count="0">
-                      <div onClick="{{ a.onPick }}" style="padding:8px 12px;font-size:12px;color:#475467;cursor:pointer;display:flex;align-items:center;gap:8px" style-hover="background:#f6f7f9"><span style="font-family:'IBM Plex Mono',monospace">{{ a.username }}</span><span style="color:#98a2b3">{{ a.name }}</span></div>
+                      <div onClick="{{ a.onPick }}" style="{{ a.style }}" style-hover="background:#f6f7f9"><span style="font-family:'IBM Plex Mono',monospace">{{ a.username }}</span><span style="color:#98a2b3">{{ a.name }}</span></div>
                     </sc-for>
                   </div>
                 </sc-if>
@@ -338,8 +338,8 @@ class Component extends DCLogic {
     this.sources = {
       gitlab: {
         id:'gitlab', label:'GitLab', color:'#e2432a', initial:'G',
-        projectLabel:'대상 레포지토리', projectPlaceholder:'group/project 경로 입력',
-        authorLabel:'작성자 필터', authorPlaceholder:'@username 입력 후 Enter',
+        projectLabel:'대상 레포지토리', projectPlaceholder:'검색 후 목록에서 선택',
+        authorLabel:'작성자 필터', authorPlaceholder:'이름/사번 검색 후 선택',
         projects:['backend/api-gateway','backend/auth-service','frontend/web-app','frontend/admin-console','infra/terraform','data/etl-pipeline','mobile/ios-app','platform/notification'],
         actions:[
           {group:'Issue', color:'#2563eb', items:[{id:'issue.open'},{id:'issue.close'},{id:'issue.update'}]},
@@ -364,41 +364,59 @@ class Component extends DCLogic {
       modalOpen: false, editingId: null, step: 1,
       draft: this.emptyDraft(), destInput: '', authorInput: '',
       repoSuggestions: [], authorSuggestions: [],
+      repoActiveIdx: 0, authorActiveIdx: 0, repoPicked: false,
     };
     this.load();
   }
   suggestRepos(q){
     clearTimeout(this._repoTimer);
     if (!q || !q.trim() || this.state.draft.source !== 'gitlab') {
-      this.setState({ repoSuggestions: [] });
+      this.setState({ repoSuggestions: [], repoActiveIdx: 0 });
       return;
     }
     this._repoTimer = setTimeout(async () => {
       const res = await fetch('/api/gitlab/projects?q=' + encodeURIComponent(q.trim()));
-      if (res.ok) this.setState({ repoSuggestions: await res.json() });
+      if (res.ok) this.setState({ repoSuggestions: await res.json(), repoActiveIdx: 0 });
     }, 250);
   }
   pickRepo(v){
     clearTimeout(this._repoTimer);
-    this.setState(s => ({ draft: { ...s.draft, repo: v }, repoSuggestions: [] }));
+    this.setState(s => ({ draft: { ...s.draft, repo: v }, repoSuggestions: [], repoActiveIdx: 0, repoPicked: true }));
+  }
+  onRepoKeydown(e){
+    const list = this.state.repoSuggestions;
+    if (!list.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); this.setState(s => ({ repoActiveIdx: (s.repoActiveIdx + 1) % list.length })); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); this.setState(s => ({ repoActiveIdx: (s.repoActiveIdx - 1 + list.length) % list.length })); }
+    else if (e.key === 'Enter') { e.preventDefault(); this.pickRepo(list[this.state.repoActiveIdx]); }
+    else if (e.key === 'Escape') { this.setState({ repoSuggestions: [], repoActiveIdx: 0 }); }
   }
   suggestAuthors(q){
     clearTimeout(this._authorTimer);
     if (!q || !q.trim() || this.state.draft.source !== 'gitlab') {
-      this.setState({ authorSuggestions: [] });
+      this.setState({ authorSuggestions: [], authorActiveIdx: 0 });
       return;
     }
     this._authorTimer = setTimeout(async () => {
       const res = await fetch('/api/gitlab/users?q=' + encodeURIComponent(q.trim()));
-      if (res.ok) this.setState({ authorSuggestions: await res.json() });
+      if (res.ok) this.setState({ authorSuggestions: await res.json(), authorActiveIdx: 0 });
     }, 250);
   }
   pickAuthor(username){
     clearTimeout(this._authorTimer);
     this.setState(s => ({
       draft: { ...s.draft, authors: s.draft.authors.includes(username) ? s.draft.authors : [...s.draft.authors, username] },
-      authorInput: '', authorSuggestions: [],
+      authorInput: '', authorSuggestions: [], authorActiveIdx: 0,
     }));
+  }
+  onAuthorKeydown(e){
+    const list = this.state.authorSuggestions;
+    if (e.key === 'Enter') e.preventDefault(); // 자유 문자열 추가 차단
+    if (!list.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); this.setState(s => ({ authorActiveIdx: (s.authorActiveIdx + 1) % list.length })); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); this.setState(s => ({ authorActiveIdx: (s.authorActiveIdx - 1 + list.length) % list.length })); }
+    else if (e.key === 'Enter') { this.pickAuthor(list[this.state.authorActiveIdx].username); }
+    else if (e.key === 'Escape') { this.setState({ authorSuggestions: [], authorActiveIdx: 0 }); }
   }
   async load(){
     const res = await fetch('/api/rules');
@@ -441,7 +459,7 @@ class Component extends DCLogic {
       this.setState(s => ({ rules: s.rules.filter(r => r.id !== id), selectedId: s.selectedId === id ? null : s.selectedId }));
     }
   }
-  openNew(){ this.setState({modalOpen:true,editingId:null,step:1,draft:this.emptyDraft(),destInput:'',authorInput:''}); }
+  openNew(){ this.setState({modalOpen:true,editingId:null,step:1,draft:this.emptyDraft(),destInput:'',authorInput:'',repoSuggestions:[],authorSuggestions:[],repoActiveIdx:0,authorActiveIdx:0,repoPicked:false}); }
   openEdit(id){
     const r = this.state.rules.find(x => x.id === id);
     if (!r) return;
@@ -449,19 +467,20 @@ class Component extends DCLogic {
       modalOpen: true, editingId: id, step: 2,
       draft: { ...r, active: !!r.active, actions: [...r.actions], authors: [...r.authors], destinations: [...r.destinations] },
       destInput: '', authorInput: '', selectedId: null,
+      repoSuggestions: [], authorSuggestions: [], repoActiveIdx: 0, authorActiveIdx: 0, repoPicked: true,
     });
   }
   cancel(){ this.setState({modalOpen:false,editingId:null,step:1,destInput:'',authorInput:'',repoSuggestions:[],authorSuggestions:[]}); }
   pickSource(key){ this.setState(s=>({draft:{...s.draft,source:key,repo:'',actions:[]}})); }
   goStep2(){ this.setState({step:2}); }
   backToSource(){ if(this.state.editingId) return; this.setState({step:1}); }
-  addAuthor(){ const v=(this.state.authorInput||'').trim(); if(!v) return; this.setState(s=>({draft:{...s.draft,authors:s.draft.authors.includes(v)?s.draft.authors:[...s.draft.authors,v]},authorInput:''})); }
+  addAuthor(){ const list=this.state.authorSuggestions; if(!list.length) return; this.pickAuthor(list[this.state.authorActiveIdx].username); }
   removeAuthor(i){ this.setState(s=>({draft:{...s.draft,authors:s.draft.authors.filter((_,x)=>x!==i)}})); }
   patchDraft(p){ this.setState(s=>({draft:{...s.draft,...p}})); }
   toggleIn(arr,v){ return arr.includes(v)?arr.filter(x=>x!==v):[...arr,v]; }
   addDest(){ const v=(this.state.destInput||'').trim(); if(!v) return; this.setState(s=>({draft:{...s.draft,destinations:[...s.draft.destinations,v]},destInput:''})); }
   removeDest(i){ this.setState(s=>({draft:{...s.draft,destinations:s.draft.destinations.filter((_,x)=>x!==i)}})); }
-  canSave(){ const d=this.state.draft; return d.name.trim() && d.repo && d.actions.length>0 && d.destinations.length>0; }
+  canSave(){ const d=this.state.draft; const repoOk=d.repo && (d.source!=='gitlab' || this.state.repoPicked); return d.name.trim() && repoOk && d.actions.length>0 && d.destinations.length>0; }
   async save(){
     if (!this.canSave()) return;
     const d = { ...this.state.draft, name: this.state.draft.name.trim() };
@@ -597,10 +616,11 @@ class Component extends DCLogic {
       save_label:s.editingId?'변경 저장':'규칙 생성',
       draft_name:d.name, onDraftName:(e)=>this.patchDraft({name:e.target.value}),
       draft_description:d.description, onDraftDescription:(e)=>this.patchDraft({description:e.target.value}),
-      draft_repo:d.repo, onDraftRepo:(e)=>{this.patchDraft({repo:e.target.value});this.suggestRepos(e.target.value);},
-      repoSuggestions:s.repoSuggestions.map(v=>({value:v,onPick:()=>this.pickRepo(v)})),
+      draft_repo:d.repo, onDraftRepo:(e)=>{this.patchDraft({repo:e.target.value});this.setState({repoPicked:false});this.suggestRepos(e.target.value);},
+      repoSuggestions:s.repoSuggestions.map((v,i)=>({value:v,onPick:()=>this.pickRepo(v),style:"padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#475467;cursor:pointer;background:"+(i===s.repoActiveIdx?'#eef2ff':'#fff')})),
+      onRepoKey:(e)=>this.onRepoKeydown(e),
       hasRepoSuggestions:s.repoSuggestions.length>0,
-      authorSuggestions:s.authorSuggestions.map(u=>({username:u.username,name:u.name,onPick:()=>this.pickAuthor(u.username)})),
+      authorSuggestions:s.authorSuggestions.map((u,i)=>({username:u.username,name:u.name,onPick:()=>this.pickAuthor(u.username),style:'padding:8px 12px;font-size:12px;color:#475467;cursor:pointer;display:flex;align-items:center;gap:8px;background:'+(i===s.authorActiveIdx?'#eef2ff':'#fff')})),
       hasAuthorSuggestions:s.authorSuggestions.length>0,
       draft_projectLabel:dsrc.projectLabel,
       draft_projectPlaceholder:dsrc.projectPlaceholder,
@@ -619,7 +639,7 @@ class Component extends DCLogic {
       onBackStep:()=>this.backToSource(),
       authorInput:s.authorInput,
       onAuthorInput:(e)=>{this.setState({authorInput:e.target.value});this.suggestAuthors(e.target.value);},
-      onAuthorKey:(e)=>{if(e.key==='Enter'){e.preventDefault();this.addAuthor();}},
+      onAuthorKey:(e)=>this.onAuthorKeydown(e),
       onAddAuthor:()=>this.addAuthor(),
       hasAuthors:d.authors.length>0,
       actionGroups, authorTags, destItems,
@@ -631,7 +651,7 @@ class Component extends DCLogic {
       draftKnobStyle:'position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s;transform:translateX('+(d.active?'18px':'0')+')',
       onCancel:()=>this.cancel(), onSaveDraft:()=>this.save(),
       cantSave:!can, saveStyle,
-      save_hint: can?'':'이름 · '+dsrc.projectLabel.replace('대상 ','')+' · Action · URL은 필수입니다',
+      save_hint: can?'':'이름 · '+dsrc.projectLabel.replace('대상 ','')+'(검색 선택) · Action · URL은 필수입니다',
     };
   }
 }
