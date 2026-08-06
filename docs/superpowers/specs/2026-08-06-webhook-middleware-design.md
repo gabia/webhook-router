@@ -23,7 +23,7 @@
 
 단일 Node 프로세스, 4개 파트:
 
-1. **Auth** — Hiworks OAuth 로그인(hiworks-public-oauth flow) → 세션 쿠키. 로그인 사용자만 UI/API 접근.
+1. **Auth** — Hiworks OAuth 로그인(프로젝트 로컬 `oauth-integration` 스킬 flow) → 세션 쿠키. 로그인 사용자만 UI/API 접근.
 2. **Web UI** — 정적 HTML(로그인, 대시보드) + `/api/subscriptions` CRUD API.
 3. **Inbound** — `POST /webhooks/gitlab`. `X-Gitlab-Token` secret 검증. 즉시 200 응답, 처리 비동기.
 4. **Dispatcher** — source adapter가 payload를 `(repo, event_type, 요약 메시지)`로 정규화 → 구독 매칭(다수 매칭 시 각각 발송) → 봇 토큰으로 차세대메신저 발송.
