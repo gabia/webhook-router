@@ -34,6 +34,12 @@ export function authRouter(db, env) {
     const expectedState = req.session.oauthState;
     req.session.oauthState = null;
     if (!req.query.state || req.query.state !== expectedState) {
+      console.error('state 검증 실패:', {
+        host: req.get('host'),
+        queryStateExists: Boolean(req.query.state),
+        sessionStateExists: Boolean(expectedState),
+        cookieHeaderExists: Boolean(req.get('cookie')),
+      });
       return res.status(400).send('state 불일치');
     }
     if (!code) return res.status(400).send('code 누락');
