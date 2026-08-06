@@ -484,7 +484,7 @@ class Component extends DCLogic {
     });
   }
   cancel(){ this.setState({modalOpen:false,editingId:null,step:1,destInput:'',authorInput:'',repoSuggestions:[],authorSuggestions:[],openActionGroup:null}); }
-  pickSource(key){ this.setState(s=>({draft:{...s.draft,source:key,repo:'',actions:[]}})); }
+  pickSource(key){ if(key==='sentry') return; this.setState(s=>({draft:{...s.draft,source:key,repo:'',actions:[]}})); }
   goStep2(){ this.setState({step:2}); }
   backToSource(){ if(this.state.editingId) return; this.setState({step:1}); }
   addAuthor(){ const list=this.state.authorSuggestions; if(!list.length) return; this.pickAuthor(list[this.state.authorActiveIdx].username); }
@@ -579,13 +579,16 @@ class Component extends DCLogic {
     const d=s.draft;
     const dsrc=this.srcOf(d.source);
     const srcBlurb={gitlab:'이슈 · 머지 리퀘스트 · 파이프라인 이벤트',sentry:'이슈 · 메트릭 알럿 · 릴리즈 이벤트'};
-    const sourceOptions=Object.values(this.sources).map(src=>{const on=d.source===src.id;return {
-      label:src.label, initial:src.initial, blurb:srcBlurb[src.id]||'',
-      style:'flex:1;display:flex;flex-direction:column;gap:10px;padding:20px;border-radius:12px;cursor:pointer;user-select:none;transition:border-color .12s,background .12s;border:1.5px solid '+(on?src.color:'#e4e7ec')+';background:'+(on?src.color+'0d':'#fff'),
-      dotStyle:'width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#fff;background:'+(on?src.color:'#cbd5e1'),
-      labelStyle:'font-size:15px;font-weight:700;color:'+(on?src.color:'#344054'),
-      blurbStyle:'font-size:12px;color:'+(on?'#667085':'#98a2b3')+';line-height:1.45',
-      onPick:()=>this.pickSource(src.id),
+    const sourceOptions=Object.values(this.sources).map(src=>{const on=d.source===src.id;const disabled=src.id==='sentry';return {
+      label:src.label+(disabled?' — 지원 예정':''), initial:src.initial,
+      blurb:disabled?'아직 지원하지 않습니다. 곧 추가될 예정이에요.':(srcBlurb[src.id]||''),
+      style:disabled
+        ?'flex:1;display:flex;flex-direction:column;gap:10px;padding:20px;border-radius:12px;cursor:not-allowed;user-select:none;opacity:.55;border:1.5px dashed #d0d5dd;background:#fafbfc'
+        :'flex:1;display:flex;flex-direction:column;gap:10px;padding:20px;border-radius:12px;cursor:pointer;user-select:none;transition:border-color .12s,background .12s;border:1.5px solid '+(on?src.color:'#e4e7ec')+';background:'+(on?src.color+'0d':'#fff'),
+      dotStyle:'width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#fff;background:'+(disabled?'#cbd5e1':(on?src.color:'#cbd5e1')),
+      labelStyle:'font-size:15px;font-weight:700;color:'+(disabled?'#98a2b3':(on?src.color:'#344054')),
+      blurbStyle:'font-size:12px;color:#98a2b3;line-height:1.45',
+      onPick:disabled?()=>{}:()=>this.pickSource(src.id),
     };});
     const lockedSrcStyle='display:inline-flex;align-items:center;gap:7px;padding:3px 11px 3px 4px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid '+dsrc.color+'33;background:'+dsrc.color+'14;color:'+dsrc.color;
     const lockedDotStyle='width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;background:'+dsrc.color;
