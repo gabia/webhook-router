@@ -38,7 +38,7 @@ test('proxies search to gitlab and returns path list', async () => {
 
   const { server, base } = await startApp({
     ...baseEnv,
-    GITLAB_URL: `http://127.0.0.1:${gitlab.address().port}`,
+    GITLAB_API_URL: `http://127.0.0.1:${gitlab.address().port}/api/v4`,
     GITLAB_TOKEN: 'glpat-test',
   });
 
@@ -52,6 +52,7 @@ test('proxies search to gitlab and returns path list', async () => {
   assert.equal(u.pathname, '/api/v4/projects');
   assert.equal(u.searchParams.get('search'), 'approval');
   assert.equal(seen[0].headers['private-token'], 'glpat-test');
+  assert.equal(seen[0].headers['authorization'], 'Bearer glpat-test');
 });
 
 test('returns [] when GITLAB_TOKEN not configured', async () => {
@@ -70,7 +71,7 @@ test('returns [] for empty query without calling gitlab', async () => {
   await once(gitlab, 'listening');
   const { server, base } = await startApp({
     ...baseEnv,
-    GITLAB_URL: `http://127.0.0.1:${gitlab.address().port}`,
+    GITLAB_API_URL: `http://127.0.0.1:${gitlab.address().port}/api/v4`,
     GITLAB_TOKEN: 't',
   });
   const res = await fetch(`${base}/api/gitlab/projects`);
@@ -86,7 +87,7 @@ test('gitlab error → 502 json', async () => {
   await once(gitlab, 'listening');
   const { server, base } = await startApp({
     ...baseEnv,
-    GITLAB_URL: `http://127.0.0.1:${gitlab.address().port}`,
+    GITLAB_API_URL: `http://127.0.0.1:${gitlab.address().port}/api/v4`,
     GITLAB_TOKEN: 't',
   });
   const res = await fetch(`${base}/api/gitlab/projects?q=x`);

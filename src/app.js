@@ -37,17 +37,21 @@ export function createApp(db, env, { testSession } = {}) {
   app.get('/api/rules', requireAuth, (req, res) => res.json(listRules(db, req.userId)));
 
   // GitLab 프로젝트 typeahead — 토큰 미설정 시 빈 목록 (자동완성만 비활성)
+  // env 규약은 gabia-dev-mcp-gitlab-* 스킬과 동일: GITLAB_API_URL(/api/v4 포함) + GITLAB_TOKEN
   app.get('/api/gitlab/projects', requireAuth, async (req, res) => {
     const q = (req.query.q ?? '').toString().trim();
-    if (!q || !env.GITLAB_URL || !env.GITLAB_TOKEN) return res.json([]);
+    if (!q || !env.GITLAB_API_URL || !env.GITLAB_TOKEN) return res.json([]);
     try {
-      const u = new URL('/api/v4/projects', env.GITLAB_URL);
+      const u = new URL(`${env.GITLAB_API_URL.replace(/\/$/, '')}/projects`);
       u.searchParams.set('search', q);
       u.searchParams.set('simple', 'true');
       u.searchParams.set('per_page', '20');
       u.searchParams.set('order_by', 'similarity');
       const glRes = await fetch(u, {
-        headers: { 'PRIVATE-TOKEN': env.GITLAB_TOKEN },
+        headers: {
+          Authorization: `Bearer ${env.GITLAB_TOKEN}`,
+          'PRIVATE-TOKEN': env.GITLAB_TOKEN,
+        },
         signal: AbortSignal.timeout(5_000),
       });
       if (!glRes.ok) throw new Error(`gitlab ${glRes.status}`);
