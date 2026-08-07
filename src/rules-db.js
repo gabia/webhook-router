@@ -77,3 +77,14 @@ export function logDelivery(db, { rule_id, summary, status, error }) {
   db.prepare('INSERT INTO delivery_logs (rule_id, summary, status, error) VALUES (?, ?, ?, ?)')
     .run(rule_id, summary, status, error ?? null);
 }
+
+export function logInbound(db, { source, repo, action, author, title, url, matched, delivered_ok, delivered_fail }) {
+  db.prepare(`
+    INSERT INTO inbound_logs (source, repo, action, author, title, url, matched, delivered_ok, delivered_fail)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(source, repo ?? '', action ?? '', author ?? '', title ?? '', url ?? '', matched ?? 0, delivered_ok ?? 0, delivered_fail ?? 0);
+}
+
+export function listInbound(db, limit = 50) {
+  return db.prepare('SELECT * FROM inbound_logs ORDER BY id DESC LIMIT ?').all(limit);
+}

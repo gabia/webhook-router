@@ -3,7 +3,7 @@ import cookieSession from 'cookie-session';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { authRouter, requireAuth } from './auth.js';
-import { listRules, createRule, updateRule, deleteRule, validateRule } from './rules-db.js';
+import { listRules, createRule, updateRule, deleteRule, validateRule, logInbound, listInbound } from './rules-db.js';
 import { normalizeGitlab } from './gitlab.js';
 import { dispatchEvent } from './dispatch.js';
 
@@ -18,7 +18,17 @@ export function createApp(db, env, { testSession } = {}) {
     if (req.get('X-Gitlab-Token') !== env.GITLAB_WEBHOOK_SECRET) return res.status(401).end();
     res.status(200).end();
     const event = normalizeGitlab(req.body);
-    if (event) dispatchEvent(db, event).catch(err => console.error('dispatch 실패:', err.message));
+    if (!event) {
+      logInbound(db, {
+        source: 'gitlab',
+        repo: req.body?.project?.path_with_namespace ?? '',
+        action: `(미지원: ${req.body?.object_kind ?? '?'})`,
+      });
+      return;
+    }
+    dispatchEvent(db, event)
+      .then(r => logInbound(db, { ...event, matched: r.matched, delivered_ok: r.ok, delivered_fail: r.fail }))
+      .catch(err => console.error('dispatch 실패:', err.message));
   });
 
   app.use(testSession ?? cookieSession({
@@ -35,6 +45,8 @@ export function createApp(db, env, { testSession } = {}) {
   });
 
   app.get('/api/rules', requireAuth, (req, res) => res.json(listRules(db, req.userId)));
+
+  app.get('/api/inbound-logs', requireAuth, (req, res) => res.json(listInbound(db, 50)));
 
   // GitLab 프로젝트 typeahead — 토큰 미설정 시 빈 목록 (자동완성만 비활성)
   // env 규약은 gabia-dev-mcp-gitlab-* 스킬과 동일: GITLAB_API_URL(/api/v4 포함) + GITLAB_TOKEN

@@ -24,6 +24,19 @@ export function openDb(path) {
       active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS inbound_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source TEXT NOT NULL,
+      repo TEXT NOT NULL DEFAULT '',
+      action TEXT NOT NULL DEFAULT '',
+      author TEXT NOT NULL DEFAULT '',
+      title TEXT NOT NULL DEFAULT '',
+      url TEXT NOT NULL DEFAULT '',
+      matched INTEGER NOT NULL DEFAULT 0,
+      delivered_ok INTEGER NOT NULL DEFAULT 0,
+      delivered_fail INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
     CREATE TABLE IF NOT EXISTS delivery_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       rule_id INTEGER NOT NULL,

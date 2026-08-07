@@ -66,6 +66,7 @@ async function post(url, message) {
 export async function dispatchEvent(db, event) {
   const rules = matchRules(findActiveRules(db, event.source), event);
   const message = formatMessage(event);
+  let ok = 0, fail = 0;
 
   for (const rule of rules) {
     for (const url of rule.destinations) {
@@ -80,6 +81,7 @@ export async function dispatchEvent(db, event) {
           error = `${host}: ${err.message}`;
         }
       }
+      error ? fail++ : ok++;
       logDelivery(db, {
         rule_id: rule.id,
         summary: message.text.slice(0, 200),
@@ -88,4 +90,5 @@ export async function dispatchEvent(db, event) {
       });
     }
   }
+  return { matched: rules.length, ok, fail };
 }

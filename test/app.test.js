@@ -90,3 +90,27 @@ test('rules CRUD with session', async () => {
   assert.equal(del.status, 204);
   server.close();
 });
+
+test('webhook logs inbound: unsupported and matched events', async () => {
+  const db = openDb(':memory:');
+  const user = upsertUser(db, { office_user_no: 'o1', user_no: 'u1', name: 'n' });
+  const app = createApp(db, env, {
+    testSession: (req, _res, next) => { req.session = { userId: user.id }; next(); },
+  });
+  const server = app.listen(0);
+  await once(server, 'listening');
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  await fetch(`${base}/webhooks/gitlab`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Gitlab-Token': 'glsecret' },
+    body: JSON.stringify({ object_kind: 'emoji', project: { path_with_namespace: 'a/b' } }),
+  });
+  await new Promise(r => setTimeout(r, 200));
+
+  const logs = await (await fetch(`${base}/api/inbound-logs`)).json();
+  server.close();
+  assert.equal(logs.length, 1);
+  assert.ok(logs[0].action.includes('미지원'));
+  assert.equal(logs[0].repo, 'a/b');
+});

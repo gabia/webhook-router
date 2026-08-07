@@ -76,3 +76,15 @@ test('validateRule rejects bad input', () => {
   assert.equal(validateRule({ ...data, destinations: ['ftp://x'] }).ok, false);
   assert.equal(validateRule({ ...data, source: 'jira' }).ok, false);
 });
+
+test('logInbound/listInbound roundtrip, newest first', async () => {
+  const { logInbound, listInbound } = await import('../src/rules-db.js');
+  const { openDb } = await import('../src/db.js');
+  const db = openDb(':memory:');
+  logInbound(db, { source: 'gitlab', repo: 'a/b', action: 'mr.open', author: 'u1', title: 't1', url: 'x', matched: 2, delivered_ok: 2, delivered_fail: 0 });
+  logInbound(db, { source: 'gitlab', repo: '', action: '(미지원: push_hook)', author: '', title: '', url: '', matched: 0, delivered_ok: 0, delivered_fail: 0 });
+  const rows = listInbound(db, 10);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].action, '(미지원: push_hook)');
+  assert.equal(rows[1].matched, 2);
+});
