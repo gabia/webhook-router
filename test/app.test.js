@@ -114,3 +114,23 @@ test('webhook logs inbound: unsupported and matched events', async () => {
   assert.ok(logs[0].action.includes('미지원'));
   assert.equal(logs[0].repo, 'a/b');
 });
+
+test('webhook wrong secret is logged as rejected', async () => {
+  const db = openDb(':memory:');
+  const user = upsertUser(db, { office_user_no: 'o1', user_no: 'u1', name: 'n' });
+  const app = createApp(db, env, {
+    testSession: (req, _res, next) => { req.session = { userId: user.id }; next(); },
+  });
+  const server = app.listen(0);
+  await once(server, 'listening');
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const r = await fetch(`${base}/webhooks/gitlab`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Gitlab-Token': 'nope' },
+    body: JSON.stringify({ object_kind: 'push', project: { path_with_namespace: 'x/y' } }),
+  });
+  assert.equal(r.status, 401);
+  const logs = await (await fetch(`${base}/api/inbound-logs`)).json();
+  server.close();
+  assert.ok(logs.some(l => l.action.includes('secret 불일치') && l.repo === 'x/y'));
+});

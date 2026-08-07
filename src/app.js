@@ -15,7 +15,14 @@ export function createApp(db, env, { testSession } = {}) {
 
   // 웹훅은 세션/인증 밖 (GitLab이 호출)
   app.post('/webhooks/gitlab', (req, res) => {
-    if (req.get('X-Gitlab-Token') !== env.GITLAB_WEBHOOK_SECRET) return res.status(401).end();
+    if (req.get('X-Gitlab-Token') !== env.GITLAB_WEBHOOK_SECRET) {
+      logInbound(db, {
+        source: 'gitlab',
+        repo: req.body?.project?.path_with_namespace ?? '',
+        action: '(거부: secret 불일치)',
+      });
+      return res.status(401).end();
+    }
     res.status(200).end();
     const event = normalizeGitlab(req.body);
     if (!event) {
