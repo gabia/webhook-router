@@ -7,7 +7,8 @@
   },
   "scripts": {
     "start": "node --env-file=.env src/server.js",
-    "test": "node --test 'test/**/*.test.js'"
+    "test": "node --test 'test/**/*.test.js'",
+    "deploy": "curl --fail -H \"Authorization: Bearer $COOLIFY_TOKEN\" \"https://coolify.gabia.app/api/v1/deploy?uuid=wj0to771240xcng41x7mmnbo\""
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
