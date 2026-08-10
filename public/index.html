@@ -548,6 +548,15 @@ class Component extends DCLogic {
   }
   emptyDraft(){ return {source:'gitlab',name:'',description:'',repo:'',actions:[],authors:[],destinations:[],active:true}; }
 
+  // DB 는 SQLite datetime('now') 라 'YYYY-MM-DD HH:MM:SS' UTC. 표시할 때만 KST 로 옮긴다
+  toKst(s){
+    if(!s) return '';
+    const d=new Date(s.replace(' ','T')+'Z');
+    if(isNaN(d)) return s;
+    const p=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})
+      .formatToParts(d).reduce((a,x)=>(a[x.type]=x.value,a),{});
+    return `${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
+  }
   get accent(){ return this.props.accentColor || '#4f46e5'; }
   get perPage(){ return this.props.rowsPerPage || 10; }
   srcOf(key){ return this.sources[key]||this.sources.gitlab; }
@@ -723,7 +732,7 @@ class Component extends DCLogic {
     return {
       accent,
       inboundLogs:s.inboundLogs.map(l=>({
-        time:(l.created_at||'').replace(/^\d{4}-/,''),
+        time:this.toKst(l.created_at),
         repo:l.repo||'-', action:l.action||'-', author:l.author||'-',
         matched:l.matched, ok:l.delivered_ok, fail:l.delivered_fail,
         failStyle:'color:'+(l.delivered_fail>0?'#dc2626':'#98a2b3'),
