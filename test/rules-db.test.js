@@ -46,6 +46,16 @@ test('list shows every users rules, flagged by ownership', () => {
   );
 });
 
+test('list is ordered by last modified', () => {
+  const { db, user } = setup();
+  const first = createRule(db, user.id, { ...data, name: '먼저' });
+  createRule(db, user.id, { ...data, name: '나중' });
+  // datetime('now') 은 초 단위라 같은 초에 만들면 구분이 안 된다 — 과거로 밀어 차이를 만든다
+  db.prepare("UPDATE rules SET updated_at = datetime('now','-1 hour')").run();
+  updateRule(db, user.id, first.id, { ...data, name: '먼저(수정됨)' });
+  assert.deepEqual(listRules(db, user.id).map(r => r.name), ['먼저(수정됨)', '나중']);
+});
+
 test('update only by owner', () => {
   const { db, user } = setup();
   const other = upsertUser(db, { office_user_no: 'o2', user_no: 'u2', name: '박해커' });

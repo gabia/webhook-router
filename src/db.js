@@ -22,7 +22,8 @@ export function openDb(path) {
       authors TEXT NOT NULL,        -- JSON array, [] = all
       destinations TEXT NOT NULL,   -- JSON array of URLs
       active INTEGER NOT NULL DEFAULT 1,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT
     );
     CREATE TABLE IF NOT EXISTS inbound_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,5 +47,10 @@ export function openDb(path) {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+  // 기존 DB 마이그레이션: updated_at 없으면 추가하고 created_at 으로 채운다
+  if (!db.prepare('PRAGMA table_info(rules)').all().some(c => c.name === 'updated_at')) {
+    db.exec("ALTER TABLE rules ADD COLUMN updated_at TEXT");
+    db.exec('UPDATE rules SET updated_at = created_at');
+  }
   return db;
 }

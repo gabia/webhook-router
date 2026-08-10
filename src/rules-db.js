@@ -37,8 +37,8 @@ export function validateRule(d) {
 
 export function createRule(db, userId, d) {
   const info = db.prepare(`
-    INSERT INTO rules (user_id, name, description, source, repo, actions, authors, destinations, active)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO rules (user_id, name, description, source, repo, actions, authors, destinations, active, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
   `).run(
     userId, d.name.trim(), d.description ?? '', d.source, d.repo.trim(),
     JSON.stringify(d.actions), JSON.stringify(d.authors ?? []),
@@ -52,13 +52,13 @@ export function listRules(db, userId) {
   return db.prepare(`
     SELECT r.*, u.name AS owner_name, (r.user_id = ?) AS mine
     FROM rules r JOIN users u ON u.id = r.user_id
-    ORDER BY r.id DESC
+    ORDER BY COALESCE(r.updated_at, r.created_at) DESC, r.id DESC
   `).all(userId).map(parse);
 }
 
 export function updateRule(db, userId, id, d) {
   const info = db.prepare(`
-    UPDATE rules SET name=?, description=?, repo=?, actions=?, authors=?, destinations=?, active=?
+    UPDATE rules SET name=?, description=?, repo=?, actions=?, authors=?, destinations=?, active=?, updated_at=datetime('now')
     WHERE id = ? AND user_id = ?
   `).run(
     d.name.trim(), d.description ?? '', d.repo.trim(),

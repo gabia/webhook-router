@@ -48,12 +48,13 @@ export function createApp(db, env, { testSession } = {}) {
 
   app.get('/api/me', requireAuth, (req, res) => {
     const me = db.prepare('SELECT id, name FROM users WHERE id = ?').get(req.userId);
-    res.json(me);
+    // 웹훅 시크릿은 여기서만 내려준다 — index.html 은 정적 서빙이라 인증이 걸리지 않는다
+    res.json({ ...me, webhook_secret: env.GITLAB_WEBHOOK_SECRET });
   });
 
   app.get('/api/rules', requireAuth, (req, res) => res.json(listRules(db, req.userId)));
 
-  app.get('/api/inbound-logs', requireAuth, (req, res) => res.json(listInbound(db, 50)));
+  app.get('/api/inbound-logs', requireAuth, (req, res) => res.json(listInbound(db, 10)));
 
   // GitLab 프로젝트 typeahead — 토큰 미설정 시 빈 목록 (자동완성만 비활성)
   // env 규약은 gabia-dev-mcp-gitlab-* 스킬과 동일: GITLAB_API_URL(/api/v4 포함) + GITLAB_TOKEN
