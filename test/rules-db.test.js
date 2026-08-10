@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { openDb } from '../src/db.js';
 import {
   upsertUser, listRules, createRule, updateRule, deleteRule,
-  findActiveRules, logDelivery, validateRule,
+  findActiveRules, logDelivery, validateRule, logInbound, listInbound,
 } from '../src/rules-db.js';
 
 const data = {
@@ -110,4 +110,13 @@ test('logInbound/listInbound roundtrip, newest first', async () => {
   assert.equal(rows.length, 2);
   assert.equal(rows[0].action, '(미지원: push_hook)');
   assert.equal(rows[1].matched, 2);
+});
+
+test('listInbound filters by repo substring, wildcards are literal', () => {
+  const db = openDb(':memory:');
+  const log = repo => logInbound(db, { source: 'gitlab', repo, action: 'mr.open' });
+  ['backend/api-gateway', 'backend/auth', 'frontend/web', '100%/edge'].forEach(log);
+  assert.deepEqual(listInbound(db, 10, 'backend').map(r => r.repo), ['backend/auth', 'backend/api-gateway']);
+  assert.equal(listInbound(db, 10, '  ').length, 4);   // 공백만이면 필터 없음
+  assert.deepEqual(listInbound(db, 10, '%').map(r => r.repo), ['100%/edge']);  // 전체 매칭이 아니어야 한다
 });

@@ -90,6 +90,12 @@ export function logInbound(db, { source, repo, action, author, title, url, match
   `).run(source, repo ?? '', action ?? '', author ?? '', title ?? '', url ?? '', matched ?? 0, delivered_ok ?? 0, delivered_fail ?? 0);
 }
 
-export function listInbound(db, limit = 50) {
-  return db.prepare('SELECT * FROM inbound_logs ORDER BY id DESC LIMIT ?').all(limit);
+export function listInbound(db, limit = 50, repo = '') {
+  const q = repo.trim();
+  if (!q) return db.prepare('SELECT * FROM inbound_logs ORDER BY id DESC LIMIT ?').all(limit);
+  // LIKE 이스케이프: 사용자가 친 % _ 는 와일드카드가 아니라 글자로 취급
+  const pattern = '%' + q.replace(/[\\%_]/g, c => '\\' + c) + '%';
+  return db.prepare(`
+    SELECT * FROM inbound_logs WHERE repo LIKE ? ESCAPE '\\' ORDER BY id DESC LIMIT ?
+  `).all(pattern, limit);
 }

@@ -128,13 +128,19 @@
           <span style="font-size:13.5px;font-weight:700">수신 웹훅 로그</span>
           <span style="font-size:11px;color:#98a2b3">5초마다 자동 갱신</span>
         </div>
-        <span style="font-size:11px;color:#98a2b3;font-family:'IBM Plex Mono',monospace">{{ inboundCount }} events</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="position:relative;width:220px">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#98a2b3;font-size:12px">⌕</span>
+            <input value="{{ inboundQuery }}" onChange="{{ onInboundQuery }}" placeholder="프로젝트명으로 필터" style="width:100%;padding:6px 10px 6px 28px;border:1px solid #d0d5dd;border-radius:7px;font-size:12px;background:#fff;font-family:'IBM Plex Mono',monospace" />
+          </div>
+          <span style="font-size:11px;color:#98a2b3;font-family:'IBM Plex Mono',monospace">{{ inboundCount }} events</span>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:130px 1.6fr 1.2fr 1fr 70px 90px;gap:12px;padding:10px 18px;background:#fafbfc;border-bottom:1px solid #e4e7ec;font-size:11px;font-weight:600;color:#98a2b3;text-transform:uppercase;letter-spacing:.04em">
         <div>시간</div><div>프로젝트</div><div>액션</div><div>작성자</div><div style="text-align:center">매칭</div><div style="text-align:right">발송</div>
       </div>
       <sc-if value="{{ inboundEmpty }}" hint-placeholder-val="{{ true }}">
-        <div style="padding:28px 20px;text-align:center;color:#98a2b3;font-size:13px">아직 수신된 웹훅이 없습니다.</div>
+        <div style="padding:28px 20px;text-align:center;color:#98a2b3;font-size:13px">{{ inboundEmptyText }}</div>
       </sc-if>
       <sc-for list="{{ inboundLogs }}" as="l" hint-placeholder-count="0">
         <div style="display:grid;grid-template-columns:130px 1.6fr 1.2fr 1fr 70px 90px;gap:12px;padding:11px 18px;border-bottom:1px solid #f0f1f4;align-items:center;font-size:12px">
@@ -446,7 +452,7 @@ class Component extends DCLogic {
       draft: this.emptyDraft(), destInput: '', authorInput: '',
       repoSuggestions: [], authorSuggestions: [],
       repoActiveIdx: 0, authorActiveIdx: 0, repoPicked: false, openActionGroup: null,
-      inboundLogs: [], mineOnly: false, guideOpen: false, webhookSecret: '',
+      inboundLogs: [], inboundQuery: '', mineOnly: false, guideOpen: false, webhookSecret: '',
     };
     this.load();
     this.loadMe();
@@ -461,9 +467,14 @@ class Component extends DCLogic {
   }
   async loadInbound(){
     try {
-      const res = await fetch('/api/inbound-logs');
+      const res = await fetch('/api/inbound-logs?repo=' + encodeURIComponent(this.state.inboundQuery));
       if (res.ok) this.setState({ inboundLogs: await res.json() });
     } catch {}
+  }
+  onInboundQuery(v){
+    this.setState({ inboundQuery: v });
+    clearTimeout(this._inboundQueryTimer);
+    this._inboundQueryTimer = setTimeout(() => this.loadInbound(), 250);
   }
   suggestRepos(q){
     clearTimeout(this._repoTimer);
@@ -719,6 +730,8 @@ class Component extends DCLogic {
       })),
       inboundCount:s.inboundLogs.length,
       inboundEmpty:s.inboundLogs.length===0,
+      inboundEmptyText:s.inboundQuery.trim()?'"'+s.inboundQuery.trim()+'" 로 수신된 웹훅이 없습니다.':'아직 수신된 웹훅이 없습니다.',
+      inboundQuery:s.inboundQuery, onInboundQuery:(e)=>this.onInboundQuery(e.target.value),
       stat_total:s.rules.length,
       stat_active:s.rules.filter(r=>r.active).length,
       stat_dest:s.rules.reduce((n,r)=>n+r.destinations.length,0),

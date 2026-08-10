@@ -54,7 +54,8 @@ export function createApp(db, env, { testSession } = {}) {
 
   app.get('/api/rules', requireAuth, (req, res) => res.json(listRules(db, req.userId)));
 
-  app.get('/api/inbound-logs', requireAuth, (req, res) => res.json(listInbound(db, 10)));
+  app.get('/api/inbound-logs', requireAuth, (req, res) =>
+    res.json(listInbound(db, 10, (req.query.repo ?? '').toString())));
 
   // GitLab 프로젝트 typeahead — 토큰 미설정 시 빈 목록 (자동완성만 비활성)
   // env 규약은 gabia-dev-mcp-gitlab-* 스킬과 동일: GITLAB_API_URL(/api/v4 포함) + GITLAB_TOKEN
