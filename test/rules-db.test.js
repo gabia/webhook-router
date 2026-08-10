@@ -33,6 +33,19 @@ test('create + list roundtrip with parsed arrays', () => {
   assert.deepEqual(rules[0].destinations, ['https://dest.example/hook']);
 });
 
+test('list shows every users rules, flagged by ownership', () => {
+  const { db, user } = setup();
+  const other = upsertUser(db, { office_user_no: 'o2', user_no: 'u2', name: '박해커' });
+  createRule(db, user.id, data);
+  createRule(db, other.id, { ...data, name: '남의 규칙' });
+  const rules = listRules(db, user.id);
+  assert.equal(rules.length, 2);
+  assert.deepEqual(
+    rules.map(r => [r.name, r.owner_name, r.mine]),
+    [['남의 규칙', '박해커', 0], ['테스트 규칙', '김개발', 1]],
+  );
+});
+
 test('update only by owner', () => {
   const { db, user } = setup();
   const other = upsertUser(db, { office_user_no: 'o2', user_no: 'u2', name: '박해커' });

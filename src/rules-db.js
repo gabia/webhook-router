@@ -47,8 +47,13 @@ export function createRule(db, userId, d) {
   return parse(db.prepare('SELECT * FROM rules WHERE id = ?').get(info.lastInsertRowid));
 }
 
+// 규칙은 전체 공개(팀 공용). 수정/삭제는 소유자만 — mine 플래그로 UI가 판단
 export function listRules(db, userId) {
-  return db.prepare('SELECT * FROM rules WHERE user_id = ? ORDER BY id DESC').all(userId).map(parse);
+  return db.prepare(`
+    SELECT r.*, u.name AS owner_name, (r.user_id = ?) AS mine
+    FROM rules r JOIN users u ON u.id = r.user_id
+    ORDER BY r.id DESC
+  `).all(userId).map(parse);
 }
 
 export function updateRule(db, userId, id, d) {
