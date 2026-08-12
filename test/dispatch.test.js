@@ -7,7 +7,7 @@ const event = {
   author: 'dohyun', title: 'Add login', url: 'https://gitlab.example.com/mr/1',
 };
 const rule = (over = {}) => ({
-  id: 1, source: 'gitlab', repo: 'backend/api-gateway',
+  id: 1, source: 'gitlab', repos: ['backend/api-gateway'],
   actions: ['mr.open'], authors: [], destinations: ['https://dest.example/hook'],
   active: 1, ...over,
 });
@@ -21,7 +21,13 @@ test('inactive rule excluded', () => {
 });
 
 test('repo mismatch excluded', () => {
-  assert.equal(matchRules([rule({ repo: 'other/repo' })], event).length, 0);
+  assert.equal(matchRules([rule({ repos: ['other/repo'] })], event).length, 0);
+});
+
+test('multi-repo rule matches any listed repo', () => {
+  const r = rule({ repos: ['other/repo', 'backend/api-gateway'] });
+  assert.equal(matchRules([r], event).length, 1);
+  assert.equal(matchRules([r], { ...event, repo: 'nope/x' }).length, 0);
 });
 
 test('action mismatch excluded', () => {

@@ -7,7 +7,7 @@ import {
 } from '../src/rules-db.js';
 
 const data = {
-  name: '테스트 규칙', description: '', source: 'gitlab', repo: 'a/b',
+  name: '테스트 규칙', description: '', source: 'gitlab', repos: ['a/b'],
   actions: ['mr.open'], authors: [], destinations: ['https://dest.example/hook'], active: true,
 };
 
@@ -79,7 +79,7 @@ test('findActiveRules returns all users active rules for source', () => {
   const { db, user } = setup();
   createRule(db, user.id, data);
   createRule(db, user.id, { ...data, active: false });
-  createRule(db, user.id, { ...data, source: 'sentry', repo: 'sentry/x' });
+  createRule(db, user.id, { ...data, source: 'sentry', repos: ['sentry/x'] });
   assert.equal(findActiveRules(db, 'gitlab').length, 1);
 });
 
@@ -98,6 +98,9 @@ test('validateRule rejects bad input', () => {
   assert.equal(validateRule({ ...data, destinations: [] }).ok, false);
   assert.equal(validateRule({ ...data, destinations: ['ftp://x'] }).ok, false);
   assert.equal(validateRule({ ...data, source: 'jira' }).ok, false);
+  assert.equal(validateRule({ ...data, repos: [] }).ok, false);
+  assert.equal(validateRule({ ...data, repos: ['  '] }).ok, false);
+  assert.equal(validateRule({ ...data, repos: ['a/b', 'c/d'] }).ok, true);
 });
 
 test('logInbound/listInbound roundtrip, newest first', async () => {

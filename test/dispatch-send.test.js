@@ -29,7 +29,7 @@ async function startDest(handler) {
 function setupRule(db, destinations) {
   const user = upsertUser(db, { office_user_no: 'o1', user_no: 'u1', name: 'n' });
   return createRule(db, user.id, {
-    name: 'r', description: '', source: 'gitlab', repo: 'a/b',
+    name: 'r', description: '', source: 'gitlab', repos: ['a/b'],
     actions: ['mr.open'], authors: [], destinations, active: true,
   });
 }

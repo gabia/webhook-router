@@ -94,7 +94,7 @@
           <div style="min-width:0">
             <span style="{{ row.srcChipStyle }}"><span style="{{ row.srcDotStyle }}">{{ row.srcInitial }}</span>{{ row.srcLabel }}</span>
           </div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#475467;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ row.repo }}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#475467;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="{{ row.repoText }}">{{ row.repoText }}</div>
           <div style="display:flex;flex-wrap:wrap;gap:4px">
             <sc-for list="{{ row.actionBadges }}" as="b" hint-placeholder-count="2">
               <span style="{{ b.style }}">{{ b.id }}</span>
@@ -230,9 +230,10 @@
             등록 후 이 대시보드에서 규칙을 만들면 조건에 맞는 이벤트만 재전송됩니다.
           </div>
           <sc-for list="{{ guideRows }}" as="g" hint-placeholder-count="4">
-            <div style="display:grid;grid-template-columns:130px 1fr;gap:14px;align-items:start;padding:12px 14px;border:1px solid #e4e7ec;border-radius:9px;background:#fafbfc">
+            <div style="display:grid;grid-template-columns:130px 1fr auto;gap:14px;align-items:start;padding:12px 14px;border:1px solid #e4e7ec;border-radius:9px;background:#fafbfc">
               <div style="font-size:12px;font-weight:600;color:#667085">{{ g.label }}</div>
               <div style="{{ g.valueStyle }}">{{ g.value }}</div>
+              <button onClick="{{ g.onCopy }}" style="{{ g.copyStyle }}">{{ g.copyLabel }}</button>
             </div>
           </sc-for>
           <div style="font-size:12px;color:#98a2b3;line-height:1.6">
@@ -291,9 +292,16 @@
               <input value="{{ draft_name }}" onChange="{{ onDraftName }}" placeholder="예: 이슈 생성 알림" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px" />
             </div>
             <div>
-              <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:6px">{{ draft_projectLabel }} <span style="color:#dc2626">*</span></label>
-              <div style="position:relative">
-                <input value="{{ draft_repo }}" onChange="{{ onDraftRepo }}" onKeyDown="{{ onRepoKey }}" placeholder="{{ draft_projectPlaceholder }}" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
+              <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:6px">설명</label>
+              <input value="{{ draft_description }}" onChange="{{ onDraftDescription }}" placeholder="이 규칙에 대한 간단한 메모" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px" />
+            </div>
+          </div>
+
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">{{ draft_projectLabel }} <span style="color:#dc2626">*</span> <span style="font-weight:400;color:#98a2b3">· 여러 개 추가할 수 있습니다</span></label>
+            <div style="display:flex;gap:8px;margin-bottom:8px">
+              <div style="position:relative;flex:1">
+                <input value="{{ repoInput }}" onChange="{{ onDraftRepo }}" onKeyDown="{{ onRepoKey }}" placeholder="{{ draft_projectPlaceholder }}" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
                 <sc-if value="{{ hasRepoSuggestions }}" hint-placeholder-val="{{ false }}">
                   <div style="position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #d0d5dd;border-radius:8px;box-shadow:0 8px 20px rgba(16,20,30,.12);z-index:60;overflow:hidden">
                     <sc-for list="{{ repoSuggestions }}" as="r" hint-placeholder-count="0">
@@ -302,12 +310,16 @@
                   </div>
                 </sc-if>
               </div>
+              <button onClick="{{ onAddRepo }}" style="flex:none;background:#eef0f4;border:1px solid #d0d5dd;border-radius:8px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer;color:#344054">추가</button>
             </div>
-          </div>
-
-          <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:6px">설명</label>
-            <input value="{{ draft_description }}" onChange="{{ onDraftDescription }}" placeholder="이 규칙에 대한 간단한 메모" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px" />
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-for list="{{ repoTags }}" as="r" hint-placeholder-count="2">
+                <span style="display:inline-flex;align-items:center;gap:7px;background:#f6f7f9;border:1px solid #eceef1;border-radius:999px;padding:5px 7px 5px 11px;font-size:12px">
+                  <span style="font-family:'IBM Plex Mono',monospace;color:#475467">{{ r.value }}</span>
+                  <button onClick="{{ r.onRemove }}" style="width:20px;height:20px;border:none;background:#e9ebef;border-radius:5px;cursor:pointer;color:#667085;font-size:11px">✕</button>
+                </span>
+              </sc-for>
+            </div>
           </div>
 
           <div>
@@ -449,15 +461,29 @@ class Component extends DCLogic {
     this.state = {
       rules: [], page: 1, query: '', selectedId: null,
       modalOpen: false, editingId: null, step: 1,
-      draft: this.emptyDraft(), destInput: '', authorInput: '',
+      draft: this.emptyDraft(), destInput: '', authorInput: '', repoInput: '',
       repoSuggestions: [], authorSuggestions: [],
-      repoActiveIdx: 0, authorActiveIdx: 0, repoPicked: false, openActionGroup: null,
+      repoActiveIdx: 0, authorActiveIdx: 0, openActionGroup: null,
       inboundLogs: [], inboundQuery: '', mineOnly: false, guideOpen: false, webhookSecret: '',
+      copiedLabel: null,
     };
     this.load();
     this.loadMe();
     this.loadInbound();
     this._inboundTimer = setInterval(() => this.loadInbound(), 5000);
+  }
+  async copyGuideValue(label, value){
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      // ponytail: http(비보안) 컨텍스트 fallback
+      const ta = document.createElement('textarea');
+      ta.value = value; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+    }
+    this.setState({ copiedLabel: label });
+    clearTimeout(this._copyTimer);
+    this._copyTimer = setTimeout(() => this.setState({ copiedLabel: null }), 1500);
   }
   async loadMe(){
     try {
@@ -489,14 +515,18 @@ class Component extends DCLogic {
   }
   pickRepo(v){
     clearTimeout(this._repoTimer);
-    this.setState(s => ({ draft: { ...s.draft, repo: v }, repoSuggestions: [], repoActiveIdx: 0, repoPicked: true }));
+    this.setState(s => ({
+      draft: { ...s.draft, repos: s.draft.repos.includes(v) ? s.draft.repos : [...s.draft.repos, v] },
+      repoInput: '', repoSuggestions: [], repoActiveIdx: 0,
+    }));
   }
   onRepoKeydown(e){
     const list = this.state.repoSuggestions;
+    if (e.key === 'Enter') e.preventDefault(); // 자유 문자열 추가 차단
     if (!list.length) return;
     if (e.key === 'ArrowDown') { e.preventDefault(); this.setState(s => ({ repoActiveIdx: (s.repoActiveIdx + 1) % list.length })); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); this.setState(s => ({ repoActiveIdx: (s.repoActiveIdx - 1 + list.length) % list.length })); }
-    else if (e.key === 'Enter') { e.preventDefault(); this.pickRepo(list[this.state.repoActiveIdx]); }
+    else if (e.key === 'Enter') { this.pickRepo(list[this.state.repoActiveIdx]); }
     else if (e.key === 'Escape') { this.setState({ repoSuggestions: [], repoActiveIdx: 0 }); }
   }
   suggestAuthors(q){
@@ -546,7 +576,7 @@ class Component extends DCLogic {
     }
     return res.status === 204 ? true : res.json();
   }
-  emptyDraft(){ return {source:'gitlab',name:'',description:'',repo:'',actions:[],authors:[],destinations:[],active:true}; }
+  emptyDraft(){ return {source:'gitlab',name:'',description:'',repos:[],actions:[],authors:[],destinations:[],active:true}; }
 
   // DB 는 SQLite datetime('now') 라 'YYYY-MM-DD HH:MM:SS' UTC. 표시할 때만 KST 로 옮긴다
   toKst(s){
@@ -576,28 +606,30 @@ class Component extends DCLogic {
       this.setState(s => ({ rules: s.rules.filter(r => r.id !== id), selectedId: s.selectedId === id ? null : s.selectedId }));
     }
   }
-  openNew(){ this.setState({modalOpen:true,editingId:null,step:1,draft:this.emptyDraft(),destInput:'',authorInput:'',repoSuggestions:[],authorSuggestions:[],repoActiveIdx:0,authorActiveIdx:0,repoPicked:false,openActionGroup:null}); }
+  openNew(){ this.setState({modalOpen:true,editingId:null,step:1,draft:this.emptyDraft(),destInput:'',authorInput:'',repoInput:'',repoSuggestions:[],authorSuggestions:[],repoActiveIdx:0,authorActiveIdx:0,openActionGroup:null}); }
   openEdit(id){
     const r = this.state.rules.find(x => x.id === id);
     if (!r) return;
     this.setState({
       modalOpen: true, editingId: id, step: 2,
-      draft: { ...r, active: !!r.active, actions: [...r.actions], authors: [...r.authors], destinations: [...r.destinations] },
-      destInput: '', authorInput: '', selectedId: null,
-      repoSuggestions: [], authorSuggestions: [], repoActiveIdx: 0, authorActiveIdx: 0, repoPicked: true, openActionGroup: null,
+      draft: { ...r, active: !!r.active, repos: [...r.repos], actions: [...r.actions], authors: [...r.authors], destinations: [...r.destinations] },
+      destInput: '', authorInput: '', repoInput: '', selectedId: null,
+      repoSuggestions: [], authorSuggestions: [], repoActiveIdx: 0, authorActiveIdx: 0, openActionGroup: null,
     });
   }
-  cancel(){ this.setState({modalOpen:false,editingId:null,step:1,destInput:'',authorInput:'',repoSuggestions:[],authorSuggestions:[],openActionGroup:null}); }
-  pickSource(key){ if(key==='sentry') return; this.setState(s=>({draft:{...s.draft,source:key,repo:'',actions:[]}})); }
+  cancel(){ this.setState({modalOpen:false,editingId:null,step:1,destInput:'',authorInput:'',repoInput:'',repoSuggestions:[],authorSuggestions:[],openActionGroup:null}); }
+  pickSource(key){ if(key==='sentry') return; this.setState(s=>({draft:{...s.draft,source:key,repos:[],actions:[]}})); }
   goStep2(){ this.setState({step:2}); }
   backToSource(){ if(this.state.editingId) return; this.setState({step:1}); }
   addAuthor(){ const list=this.state.authorSuggestions; if(!list.length) return; this.pickAuthor(list[this.state.authorActiveIdx].username); }
+  addRepo(){ const list=this.state.repoSuggestions; if(!list.length) return; this.pickRepo(list[this.state.repoActiveIdx]); }
+  removeRepo(i){ this.setState(s=>({draft:{...s.draft,repos:s.draft.repos.filter((_,x)=>x!==i)}})); }
   removeAuthor(i){ this.setState(s=>({draft:{...s.draft,authors:s.draft.authors.filter((_,x)=>x!==i)}})); }
   patchDraft(p){ this.setState(s=>({draft:{...s.draft,...p}})); }
   toggleIn(arr,v){ return arr.includes(v)?arr.filter(x=>x!==v):[...arr,v]; }
   addDest(){ const v=(this.state.destInput||'').trim(); if(!v) return; this.setState(s=>({draft:{...s.draft,destinations:[...s.draft.destinations,v]},destInput:''})); }
   removeDest(i){ this.setState(s=>({draft:{...s.draft,destinations:s.draft.destinations.filter((_,x)=>x!==i)}})); }
-  canSave(){ const d=this.state.draft; const repoOk=d.repo && (d.source!=='gitlab' || this.state.repoPicked); return d.name.trim() && repoOk && d.actions.length>0 && d.destinations.length>0; }
+  canSave(){ const d=this.state.draft; return d.name.trim() && d.repos.length>0 && d.actions.length>0 && d.destinations.length>0; }
   async save(){
     if (!this.canSave()) return;
     const d = { ...this.state.draft, name: this.state.draft.name.trim() };
@@ -613,18 +645,19 @@ class Component extends DCLogic {
   buildSample(r){
     const first=r.actions[0]||'issue.open'; const [kind,action]=first.split('.');
     const who=r.authors.length?r.authors[0].replace('@',''):'any_user';
+    const repo=r.repos[0]||'';
     if(r.source==='sentry'){
-      return JSON.stringify({source:'sentry',action:action,data:{issue:{id:'4507',title:'TypeError: undefined is not a function',culprit:'app/handlers.js'}},actor:{type:'user',name:who},project:{slug:r.repo}},null,2);
+      return JSON.stringify({source:'sentry',action:action,data:{issue:{id:'4507',title:'TypeError: undefined is not a function',culprit:'app/handlers.js'}},actor:{type:'user',name:who},project:{slug:repo}},null,2);
     }
     const km={issue:'issue',mr:'merge_request',pipeline:'pipeline'};
-    return JSON.stringify({object_kind:km[kind]||kind,event_type:km[kind]||kind,project:{path_with_namespace:r.repo,web_url:'https://gitlab.example.com/'+r.repo},user:{username:who},object_attributes:{action:action,state:action}},null,2);
+    return JSON.stringify({object_kind:km[kind]||kind,event_type:km[kind]||kind,project:{path_with_namespace:repo,web_url:'https://gitlab.example.com/'+repo},user:{username:who},object_attributes:{action:action,state:action}},null,2);
   }
 
   renderVals(){
     const accent=this.accent, s=this.state, perPage=this.perPage;
     const q=(s.query||'').trim().toLowerCase();
     const scoped=s.mineOnly?s.rules.filter(r=>r.mine):s.rules;
-    const filtered=q?scoped.filter(r=>(r.name+' '+r.description+' '+r.repo+' '+this.srcOf(r.source).label).toLowerCase().includes(q)):scoped;
+    const filtered=q?scoped.filter(r=>(r.name+' '+r.description+' '+r.repos.join(' ')+' '+this.srcOf(r.source).label).toLowerCase().includes(q)):scoped;
     const totalPages=Math.max(1,Math.ceil(filtered.length/perPage));
     const page=Math.min(s.page,totalPages);
     const start=(page-1)*perPage;
@@ -642,6 +675,7 @@ class Component extends DCLogic {
         srcInitial:src.initial,
         srcChipStyle:'display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 3px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid '+src.color+'33;background:'+src.color+'14;color:'+src.color,
         srcDotStyle:'width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;background:'+src.color,
+        repoText:r.repos.join(', '),
         actionBadges:r.actions.map(id=>({id,style:this.badgeStyle(this.colorFor(r.source,id))})),
         authorText:r.authors.length?r.authors.join(', '):'모든 작성자',
         trackStyle:'width:38px;height:22px;border-radius:999px;position:relative;transition:background .15s;flex:none;cursor:'+(mine?'pointer':'default')+';opacity:'+(mine?'1':'.5')+';background:'+(active?accent:'#cbd5e1'),
@@ -665,7 +699,7 @@ class Component extends DCLogic {
       detail={
         detail_name:sel.name,
         detail_description:sel.description||'설명 없음',
-        detail_repo:sel.repo,
+        detail_repo:sel.repos.join(', '),
         detail_srcLabel:ssrc.label,
         detail_srcInitial:ssrc.initial,
         detail_projectLabel:ssrc.projectLabel,
@@ -753,11 +787,15 @@ class Component extends DCLogic {
       onOpenGuide:()=>this.setState({guideOpen:true}),
       onCloseGuide:()=>this.setState({guideOpen:false}),
       guideRows:[
-        {label:'웹훅 추가 URL', value:location.origin+'/webhooks/gitlab', valueStyle:"font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#1a1d24;word-break:break-all"},
-        {label:'Secret token', value:s.webhookSecret||'…', valueStyle:"font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#1a1d24;word-break:break-all"},
+        {label:'웹훅 추가 URL', value:location.origin+'/webhooks/gitlab', valueStyle:"font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#1a1d24;word-break:break-all", copy:true},
+        {label:'Secret token', value:s.webhookSecret||'…', valueStyle:"font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#1a1d24;word-break:break-all", copy:true},
         {label:'SSL 인증', value:'체크 (Enable SSL verification)', valueStyle:'font-size:13px;color:#1a1d24'},
         {label:'이벤트(Trigger)', value:'모든 이벤트 선택', valueStyle:'font-size:13px;color:#1a1d24'},
-      ],
+      ].map(g=>({...g,
+        copyLabel:s.copiedLabel===g.label?'복사됨':'복사',
+        copyStyle:g.copy?'flex:none;border:1px solid #d0d5dd;background:#fff;color:'+(s.copiedLabel===g.label?accent:'#475467')+';border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer':'display:none',
+        onCopy:()=>this.copyGuideValue(g.label,g.value),
+      })),
       onAddNew:()=>this.openNew(),
       pageRules, isEmpty:filtered.length===0,
       page_info:'전체 '+filtered.length+'개 중 '+(filtered.length?start+1:0)+'–'+Math.min(start+perPage,filtered.length),
@@ -774,7 +812,9 @@ class Component extends DCLogic {
       save_label:s.editingId?'변경 저장':'규칙 생성',
       draft_name:d.name, onDraftName:(e)=>this.patchDraft({name:e.target.value}),
       draft_description:d.description, onDraftDescription:(e)=>this.patchDraft({description:e.target.value}),
-      draft_repo:d.repo, onDraftRepo:(e)=>{this.patchDraft({repo:e.target.value});this.setState({repoPicked:false});this.suggestRepos(e.target.value);},
+      repoInput:s.repoInput, onDraftRepo:(e)=>{this.setState({repoInput:e.target.value});this.suggestRepos(e.target.value);},
+      onAddRepo:()=>this.addRepo(),
+      repoTags:d.repos.map((v,i)=>({value:v,onRemove:()=>this.removeRepo(i)})),
       repoSuggestions:s.repoSuggestions.map((v,i)=>({value:v,onPick:()=>this.pickRepo(v),style:"padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#475467;cursor:pointer;background:"+(i===s.repoActiveIdx?'#eef2ff':'#fff')})),
       onRepoKey:(e)=>this.onRepoKeydown(e),
       hasRepoSuggestions:s.repoSuggestions.length>0,

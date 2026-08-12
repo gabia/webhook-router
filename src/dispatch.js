@@ -31,7 +31,7 @@ export function matchRules(rules, event) {
   return rules.filter(r =>
     r.active &&
     r.source === event.source &&
-    r.repo === event.repo &&
+    r.repos.includes(event.repo) &&
     r.actions.includes(event.action) &&
     (r.authors.length === 0 || r.authors.map(bare).includes(bare(event.author)))
   );

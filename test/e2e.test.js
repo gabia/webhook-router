@@ -23,7 +23,7 @@ test('gitlab webhook → messenger+ payload arrives at destination', async () =>
   const db = openDb(':memory:');
   const user = upsertUser(db, { office_user_no: 'o1', user_no: 'u1', name: 'n' });
   createRule(db, user.id, {
-    name: 'MR 알림', description: '', source: 'gitlab', repo: 'backend/api-gateway',
+    name: 'MR 알림', description: '', source: 'gitlab', repos: ['backend/api-gateway'],
     actions: ['mr.open'], authors: [], destinations: [destUrl], active: true,
   });
   const app = createApp(db, {

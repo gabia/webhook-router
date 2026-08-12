@@ -62,7 +62,7 @@ test('rules CRUD with session', async () => {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      name: 'r1', description: '', source: 'gitlab', repo: 'a/b',
+      name: 'r1', description: '', source: 'gitlab', repos: ['a/b'],
       actions: ['mr.open'], authors: [], destinations: ['https://d.example/h'], active: true,
     }),
   });

@@ -17,7 +17,7 @@ export function openDb(path) {
       name TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
       source TEXT NOT NULL CHECK (source IN ('gitlab','sentry')),
-      repo TEXT NOT NULL,
+      repos TEXT NOT NULL,          -- JSON array of project paths
       actions TEXT NOT NULL,        -- JSON array
       authors TEXT NOT NULL,        -- JSON array, [] = all
       destinations TEXT NOT NULL,   -- JSON array of URLs
@@ -51,6 +51,12 @@ export function openDb(path) {
   if (!db.prepare('PRAGMA table_info(rules)').all().some(c => c.name === 'updated_at')) {
     db.exec("ALTER TABLE rules ADD COLUMN updated_at TEXT");
     db.exec('UPDATE rules SET updated_at = created_at');
+  }
+  // repo(단일) → repos(JSON 배열) 마이그레이션
+  if (!db.prepare('PRAGMA table_info(rules)').all().some(c => c.name === 'repos')) {
+    db.exec("ALTER TABLE rules ADD COLUMN repos TEXT NOT NULL DEFAULT '[]'");
+    db.exec('UPDATE rules SET repos = json_array(repo)');
+    db.exec('ALTER TABLE rules DROP COLUMN repo');
   }
   return db;
 }
