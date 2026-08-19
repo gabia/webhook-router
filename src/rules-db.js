@@ -23,7 +23,7 @@ export function validateRule(d) {
   if (!d || typeof d !== 'object') return { ok: false, error: '잘못된 요청' };
   if (!d.name?.trim()) return { ok: false, error: '이름은 필수입니다' };
   if (!['gitlab', 'sentry'].includes(d.source)) return { ok: false, error: '지원하지 않는 소스' };
-  if (!Array.isArray(d.repos) || d.repos.filter(r => r?.trim()).length === 0) return { ok: false, error: '프로젝트를 1개 이상 선택하세요' };
+  if (!Array.isArray(d.repos)) return { ok: false, error: '잘못된 프로젝트 목록' };  // [] = 모든 프로젝트
   if (!Array.isArray(d.actions) || d.actions.length === 0) return { ok: false, error: 'Action을 1개 이상 선택하세요' };
   if (!Array.isArray(d.authors)) return { ok: false, error: '잘못된 작성자 목록' };
   if (!Array.isArray(d.destinations) || d.destinations.length === 0) return { ok: false, error: 'URL을 1개 이상 등록하세요' };

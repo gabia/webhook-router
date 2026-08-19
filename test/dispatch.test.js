@@ -30,6 +30,12 @@ test('multi-repo rule matches any listed repo', () => {
   assert.equal(matchRules([r], { ...event, repo: 'nope/x' }).length, 0);
 });
 
+test('empty repos = 모든 프로젝트', () => {
+  const r = rule({ repos: [] });
+  assert.equal(matchRules([r], event).length, 1);
+  assert.equal(matchRules([r], { ...event, repo: 'any/other' }).length, 1);
+});
+
 test('action mismatch excluded', () => {
   assert.equal(matchRules([rule({ actions: ['issue.open'] })], event).length, 0);
 });

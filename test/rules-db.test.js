@@ -98,8 +98,8 @@ test('validateRule rejects bad input', () => {
   assert.equal(validateRule({ ...data, destinations: [] }).ok, false);
   assert.equal(validateRule({ ...data, destinations: ['ftp://x'] }).ok, false);
   assert.equal(validateRule({ ...data, source: 'jira' }).ok, false);
-  assert.equal(validateRule({ ...data, repos: [] }).ok, false);
-  assert.equal(validateRule({ ...data, repos: ['  '] }).ok, false);
+  assert.equal(validateRule({ ...data, repos: 'a/b' }).ok, false);
+  assert.equal(validateRule({ ...data, repos: [] }).ok, true);   // [] = 모든 프로젝트
   assert.equal(validateRule({ ...data, repos: ['a/b', 'c/d'] }).ok, true);
 });
 

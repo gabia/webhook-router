@@ -219,14 +219,14 @@
 
   <sc-if value="{{ guideOpen }}" hint-placeholder-val="{{ false }}">
     <div onClick="{{ onCloseGuide }}" style="position:fixed;inset:0;background:rgba(16,20,30,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;animation:omOverlay .15s ease">
-      <div onClick="{{ stop }}" style="width:600px;max-width:100%;background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(16,20,30,.28);animation:omPop .22s cubic-bezier(.4,0,.2,1);margin:auto">
+      <div onClick="{{ stop }}" style="width:760px;max-width:100%;background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(16,20,30,.28);animation:omPop .22s cubic-bezier(.4,0,.2,1);margin:auto">
         <div style="padding:20px 24px;border-bottom:1px solid #eceef1;display:flex;align-items:center;justify-content:space-between">
           <h2 style="margin:0;font-size:17px;font-weight:700">GitLab 웹훅 추가 방법</h2>
           <button onClick="{{ onCloseGuide }}" style="width:30px;height:30px;border:none;background:#f2f4f7;border-radius:7px;cursor:pointer;color:#667085;font-size:15px">✕</button>
         </div>
         <div style="padding:24px;display:flex;flex-direction:column;gap:18px;max-height:66vh;overflow-y:auto">
           <div style="font-size:13px;color:#667085;line-height:1.6">
-            GitLab 프로젝트의 <b>Settings → Webhooks</b> 에서 아래 값으로 웹훅을 추가하세요.
+            GitLab 프로젝트의 <b>Settings → Webhooks</b> 에서 아래 값으로 웹훅을 추가하세요.<br>
             등록 후 이 대시보드에서 규칙을 만들면 조건에 맞는 이벤트만 재전송됩니다.
           </div>
           <sc-for list="{{ guideRows }}" as="g" hint-placeholder-count="4">
@@ -253,7 +253,7 @@
 
   <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
     <div onClick="{{ onCancel }}" style="position:fixed;inset:0;background:rgba(16,20,30,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;animation:omOverlay .15s ease">
-      <div onClick="{{ stop }}" style="width:600px;max-width:100%;background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(16,20,30,.28);animation:omPop .22s cubic-bezier(.4,0,.2,1);margin:auto">
+      <div onClick="{{ onModalClick }}" style="width:600px;max-width:100%;background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(16,20,30,.28);animation:omPop .22s cubic-bezier(.4,0,.2,1);margin:auto">
         <div style="padding:20px 24px;border-bottom:1px solid #eceef1;display:flex;align-items:center;justify-content:space-between">
           <h2 style="margin:0;font-size:17px;font-weight:700">{{ modal_title }}</h2>
           <button onClick="{{ onCancel }}" style="width:30px;height:30px;border:none;background:#f2f4f7;border-radius:7px;cursor:pointer;color:#667085;font-size:15px">✕</button>
@@ -298,7 +298,7 @@
           </div>
 
           <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">{{ draft_projectLabel }} <span style="color:#dc2626">*</span> <span style="font-weight:400;color:#98a2b3">· 여러 개 추가할 수 있습니다</span></label>
+            <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">{{ draft_projectLabel }} <span style="font-weight:400;color:#98a2b3">· 여러 개 추가 가능 · 비워두면 수신된 모든 프로젝트</span></label>
             <div style="display:flex;gap:8px;margin-bottom:8px">
               <div style="position:relative;flex:1">
                 <input value="{{ repoInput }}" onChange="{{ onDraftRepo }}" onKeyDown="{{ onRepoKey }}" placeholder="{{ draft_projectPlaceholder }}" style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
@@ -629,7 +629,7 @@ class Component extends DCLogic {
   toggleIn(arr,v){ return arr.includes(v)?arr.filter(x=>x!==v):[...arr,v]; }
   addDest(){ const v=(this.state.destInput||'').trim(); if(!v) return; this.setState(s=>({draft:{...s.draft,destinations:[...s.draft.destinations,v]},destInput:''})); }
   removeDest(i){ this.setState(s=>({draft:{...s.draft,destinations:s.draft.destinations.filter((_,x)=>x!==i)}})); }
-  canSave(){ const d=this.state.draft; return d.name.trim() && d.repos.length>0 && d.actions.length>0 && d.destinations.length>0; }
+  canSave(){ const d=this.state.draft; return d.name.trim() && d.actions.length>0 && d.destinations.length>0; }
   async save(){
     if (!this.canSave()) return;
     const d = { ...this.state.draft, name: this.state.draft.name.trim() };
@@ -675,7 +675,7 @@ class Component extends DCLogic {
         srcInitial:src.initial,
         srcChipStyle:'display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 3px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid '+src.color+'33;background:'+src.color+'14;color:'+src.color,
         srcDotStyle:'width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;background:'+src.color,
-        repoText:r.repos.join(', '),
+        repoText:r.repos.length?r.repos.join(', '):'모든 프로젝트',
         actionBadges:r.actions.map(id=>({id,style:this.badgeStyle(this.colorFor(r.source,id))})),
         authorText:r.authors.length?r.authors.join(', '):'모든 작성자',
         trackStyle:'width:38px;height:22px;border-radius:999px;position:relative;transition:background .15s;flex:none;cursor:'+(mine?'pointer':'default')+';opacity:'+(mine?'1':'.5')+';background:'+(active?accent:'#cbd5e1'),
@@ -699,7 +699,7 @@ class Component extends DCLogic {
       detail={
         detail_name:sel.name,
         detail_description:sel.description||'설명 없음',
-        detail_repo:sel.repos.join(', '),
+        detail_repo:sel.repos.length?sel.repos.join(', '):'모든 프로젝트',
         detail_srcLabel:ssrc.label,
         detail_srcInitial:ssrc.initial,
         detail_projectLabel:ssrc.projectLabel,
@@ -742,7 +742,7 @@ class Component extends DCLogic {
       return {
         group:g.group, open,
         dotStyle:'width:8px;height:8px;border-radius:50%;display:inline-block;flex:none;background:'+g.color,
-        onToggleOpen:()=>this.setState(st=>({openActionGroup:st.openActionGroup===g.group?null:g.group})),
+        onToggleOpen:(e)=>{e.stopPropagation();this.setState(st=>({openActionGroup:st.openActionGroup===g.group?null:g.group}));},
         buttonStyle:'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:8px;cursor:pointer;user-select:none;transition:border-color .12s;border:1px solid '+(selCount?g.color:(open?'#d0d5dd':'#e4e7ec'))+';background:'+(selCount?g.color+'0d':'#fff'),
         summaryStyle:"flex:none;font-size:11px;font-family:'IBM Plex Mono',monospace;color:"+(selCount?g.color:'#98a2b3'),
         summary:selCount?selCount+'개 선택':'선택 안 함',
@@ -805,6 +805,7 @@ class Component extends DCLogic {
       noPrev:!prevOn, noNext:!nextOn,
       prevStyle:pageBtn(prevOn), nextStyle:pageBtn(nextOn),
       stop:(e)=>e.stopPropagation(),
+      onModalClick:(e)=>{e.stopPropagation();if(s.openActionGroup)this.setState({openActionGroup:null});},
       showDetail:!!sel, onCloseDetail:()=>this.setState({selectedId:null}),
       ...detail,
       modalOpen:s.modalOpen,
@@ -849,7 +850,7 @@ class Component extends DCLogic {
       draftKnobStyle:'position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s;transform:translateX('+(d.active?'18px':'0')+')',
       onCancel:()=>this.cancel(), onSaveDraft:()=>this.save(),
       cantSave:!can, saveStyle,
-      save_hint: can?'':'이름 · '+dsrc.projectLabel.replace('대상 ','')+'(검색 선택) · Action · URL은 필수입니다',
+      save_hint: can?'':'이름 · Action · URL은 필수입니다',
     };
   }
 }

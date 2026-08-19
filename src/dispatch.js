@@ -31,7 +31,7 @@ export function matchRules(rules, event) {
   return rules.filter(r =>
     r.active &&
     r.source === event.source &&
-    r.repos.includes(event.repo) &&
+    (r.repos.length === 0 || r.repos.includes(event.repo)) &&  // 비우면 모든 프로젝트
     r.actions.includes(event.action) &&
     (r.authors.length === 0 || r.authors.map(bare).includes(bare(event.author)))
   );
