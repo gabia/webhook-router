@@ -16,14 +16,24 @@ export function openDb(path) {
       user_id INTEGER NOT NULL REFERENCES users(id),
       name TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
-      source TEXT NOT NULL CHECK (source IN ('gitlab','sentry')),
+      source TEXT NOT NULL CHECK (source IN ('gitlab','sentry','custom')),
       repos TEXT NOT NULL,          -- JSON array of project paths
       actions TEXT NOT NULL,        -- JSON array
       authors TEXT NOT NULL,        -- JSON array, [] = all
       destinations TEXT NOT NULL,   -- JSON array of URLs
+      custom_source_id INTEGER,     -- source='custom' 일 때 custom_sources.id
+      conditions TEXT NOT NULL DEFAULT '[]', -- JSON [{key,op,value}]
       active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS custom_sources (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      name TEXT NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      last_payload TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS inbound_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,6 +67,34 @@ export function openDb(path) {
     db.exec("ALTER TABLE rules ADD COLUMN repos TEXT NOT NULL DEFAULT '[]'");
     db.exec('UPDATE rules SET repos = json_array(repo)');
     db.exec('ALTER TABLE rules DROP COLUMN repo');
+  }
+  // source CHECK 에 'custom' 추가 (CHECK 는 ALTER 불가 → 테이블 재생성)
+  const rulesSql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='rules'").get()?.sql ?? '';
+  if (!rulesSql.includes("'custom'")) {
+    db.pragma('foreign_keys = OFF');
+    db.exec(`
+      CREATE TABLE rules_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        source TEXT NOT NULL CHECK (source IN ('gitlab','sentry','custom')),
+        repos TEXT NOT NULL,
+        actions TEXT NOT NULL,
+        authors TEXT NOT NULL,
+        destinations TEXT NOT NULL,
+        custom_source_id INTEGER,
+        conditions TEXT NOT NULL DEFAULT '[]',
+        active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT
+      );
+      INSERT INTO rules_new (id,user_id,name,description,source,repos,actions,authors,destinations,active,created_at,updated_at)
+        SELECT id,user_id,name,description,source,repos,actions,authors,destinations,active,created_at,updated_at FROM rules;
+      DROP TABLE rules;
+      ALTER TABLE rules_new RENAME TO rules;
+    `);
+    db.pragma('foreign_keys = ON');
   }
   return db;
 }

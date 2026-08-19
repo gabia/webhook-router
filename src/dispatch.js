@@ -92,3 +92,81 @@ export async function dispatchEvent(db, event) {
   }
   return { matched: rules.length, ok, fail };
 }
+
+// ---------- custom webhook (임의 payload) ----------
+
+export function flattenPayload(obj, prefix = '', out = {}) {
+  if (obj === null || typeof obj !== 'object') {
+    if (prefix) out[prefix] = obj;
+    return out;
+  }
+  const entries = Array.isArray(obj) ? obj.map((v, i) => [i, v]) : Object.entries(obj);
+  if (entries.length === 0 && prefix) out[prefix] = Array.isArray(obj) ? '[]' : '{}';
+  for (const [k, v] of entries) {
+    const key = prefix ? `${prefix}.${k}` : String(k);
+    if (v !== null && typeof v === 'object') flattenPayload(v, key, out);
+    else out[key] = v;
+  }
+  return out;
+}
+
+const condStr = (v) => v == null ? '' : String(v);
+
+function evalCondition(flat, { key, op, value }) {
+  const v = condStr(flat[key]);
+  if (op === 'eq') return v === value;
+  if (op === 'ne') return v !== value;
+  if (op === 'like') return v.toLowerCase().includes(String(value).toLowerCase());
+  return false;
+}
+
+export function matchCustomRules(rules, customSourceId, flat) {
+  return rules.filter(r =>
+    r.active &&
+    r.source === 'custom' &&
+    r.custom_source_id === customSourceId &&
+    (r.conditions ?? []).every(c => evalCondition(flat, c))
+  );
+}
+
+export function formatCustomMessage(sourceName, flat) {
+  const items = Object.entries(flat).slice(0, 10).map(([k, v]) => ({
+    label: k.slice(0, 100),
+    content: condStr(v).slice(0, 300) || '(빈 값)',
+  }));
+  return {
+    text: `[${sourceName}] 커스텀 웹훅 수신`.slice(0, 4000),
+    cards: [{ color: BLUE, items: items.length ? items : [{ label: 'payload', content: '(빈 객체)' }] }],
+  };
+}
+
+export async function dispatchCustom(db, customSource, payload) {
+  const flat = flattenPayload(payload);
+  const rules = matchCustomRules(findActiveRules(db, 'custom'), customSource.id, flat);
+  const message = formatCustomMessage(customSource.name, flat);
+  let ok = 0, fail = 0;
+
+  for (const rule of rules) {
+    for (const url of rule.destinations) {
+      const host = (() => { try { return new URL(url).host; } catch { return '?'; } })();
+      let error = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          await post(url, message);
+          error = null;
+          break;
+        } catch (err) {
+          error = `${host}: ${err.message}`;
+        }
+      }
+      error ? fail++ : ok++;
+      logDelivery(db, {
+        rule_id: rule.id,
+        summary: message.text.slice(0, 200),
+        status: error ? 'fail' : 'success',
+        error,
+      });
+    }
+  }
+  return { matched: rules.length, ok, fail };
+}
