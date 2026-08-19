@@ -35,14 +35,11 @@
           <div style="width:26px;height:26px;border-radius:6px;background:var(--accent,#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px">W</div>
           <h1 style="margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em">Webhook 필터링 규칙</h1>
         </div>
-        <p style="margin:0;color:#667085;font-size:13px">GitLab · Custom 웹훅을 수신해 조건에 맞을 때만 지정한 URL로 재전송합니다.</p>
+        <p style="margin:0;color:#667085;font-size:13px">GitLab · Sentry 웹훅을 수신해 조건에 맞을 때만 지정한 URL로 재전송합니다.</p>
       </div>
       <div style="flex:none;display:flex;align-items:center;gap:10px">
       <button onClick="{{ onOpenGuide }}" style="flex:none;background:#fff;color:#344054;border:1px solid #d0d5dd;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px" style-hover="border-color:#98a2b3;background:#fafbfc">
         <span style="font-size:14px;line-height:1">📖</span> GitLab 웹훅 추가 방법
-      </button>
-      <button onClick="{{ onOpenCustom }}" style="flex:none;background:#fff;color:#0369a1;border:1px solid #7dd3fc;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px" style-hover="border-color:#0ea5e9;background:#f0f9ff">
-        <span style="font-size:14px;line-height:1">🔗</span> 커스텀 웹훅
       </button>
       <button onClick="{{ onAddNew }}" style="flex:none;background:var(--accent,#4f46e5);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px" style-hover="filter:brightness(1.06)">
         <span style="font-size:16px;line-height:1">＋</span> 규칙 추가
@@ -220,43 +217,6 @@
     </div>
   </sc-if>
 
-  <sc-if value="{{ customOpen }}" hint-placeholder-val="{{ false }}">
-    <div onClick="{{ onCloseCustom }}" style="position:fixed;inset:0;background:rgba(16,20,30,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;animation:omOverlay .15s ease">
-      <div onClick="{{ stop }}" style="width:720px;max-width:100%;background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(16,20,30,.28);animation:omPop .22s cubic-bezier(.4,0,.2,1);margin:auto">
-        <div style="padding:20px 24px;border-bottom:1px solid #eceef1;display:flex;align-items:center;justify-content:space-between">
-          <h2 style="margin:0;font-size:17px;font-weight:700">커스텀 웹훅 관리</h2>
-          <button onClick="{{ onCloseCustom }}" style="width:30px;height:30px;border:none;background:#f2f4f7;border-radius:7px;cursor:pointer;color:#667085;font-size:15px">✕</button>
-        </div>
-        <div style="padding:24px;display:flex;flex-direction:column;gap:18px;max-height:66vh;overflow-y:auto">
-          <div style="font-size:13px;color:#667085;line-height:1.6">
-            웹훅을 만들면 <b>유니크한 수신 URL</b>이 생성됩니다. 그 URL로 아무 JSON payload를 POST 하면 수신되고,<br>
-            규칙에서 payload 의 key 값 조건(= / ≠ / like)으로 필터링해 재전송할 수 있습니다.
-          </div>
-          <div style="display:flex;gap:8px">
-            <input value="{{ customName }}" onChange="{{ onCustomName }}" onKeyDown="{{ onCustomNameKey }}" placeholder="웹훅 이름 (예: 배포 알림봇)" style="flex:1;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px" />
-            <button onClick="{{ onCreateCustom }}" style="flex:none;background:var(--accent,#4f46e5);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">＋ 생성</button>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <sc-for list="{{ customList }}" as="c" hint-placeholder-count="0">
-              <div style="border:1px solid #e4e7ec;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span style="font-size:13px;font-weight:700;color:#1a1d24">{{ c.name }}</span>
-                  <span style="font-size:11px;color:#98a2b3">{{ c.owner }} · {{ c.keyCount }}</span>
-                  <span style="flex:1"></span>
-                  <button onClick="{{ c.onDelete }}" title="삭제" style="{{ c.delStyle }}">🗑</button>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;background:#f6f7f9;border:1px solid #eceef1;border-radius:7px;padding:7px 8px 7px 11px">
-                  <span style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#475467;word-break:break-all">{{ c.url }}</span>
-                  <button onClick="{{ c.onCopy }}" style="{{ c.copyStyle }}">{{ c.copyLabel }}</button>
-                </div>
-              </div>
-            </sc-for>
-          </div>
-        </div>
-      </div>
-    </div>
-  </sc-if>
-
   <sc-if value="{{ guideOpen }}" hint-placeholder-val="{{ false }}">
     <div onClick="{{ onCloseGuide }}" style="position:fixed;inset:0;background:rgba(16,20,30,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;animation:omOverlay .15s ease">
       <div onClick="{{ stop }}" style="width:760px;max-width:100%;background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(16,20,30,.28);animation:omPop .22s cubic-bezier(.4,0,.2,1);margin:auto">
@@ -337,7 +297,6 @@
             </div>
           </div>
 
-          <sc-if value="{{ isGitlabDraft }}" hint-placeholder-val="{{ true }}">
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">{{ draft_projectLabel }} <span style="font-weight:400;color:#98a2b3">· 여러 개 추가 가능 · 비워두면 수신된 모든 프로젝트</span></label>
             <div style="display:flex;gap:8px;margin-bottom:8px">
@@ -411,64 +370,6 @@
               </sc-if>
             </div>
           </div>
-
-          </sc-if>
-
-          <sc-if value="{{ isCustomDraft }}" hint-placeholder-val="{{ false }}">
-          <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">커스텀 웹훅 <span style="color:#dc2626">*</span> <span style="font-weight:400;color:#98a2b3">· 수신 URL은 상단 '커스텀 웹훅' 관리에서 확인</span></label>
-            <div style="position:relative">
-              <div onClick="{{ onToggleCustomPicker }}" style="{{ customPickerBtnStyle }}">
-                <span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ customPickedName }}</span>
-                <span style="flex:none;color:#98a2b3">▾</span>
-              </div>
-              <sc-if value="{{ customPickerOpen }}" hint-placeholder-val="{{ false }}">
-                <div style="position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #d0d5dd;border-radius:8px;box-shadow:0 8px 20px rgba(16,20,30,.12);z-index:70;overflow:hidden">
-                  <sc-for list="{{ customSourceOptions }}" as="c" hint-placeholder-count="0">
-                    <div onClick="{{ c.onPick }}" style="{{ c.style }}" style-hover="background:#f6f7f9"><span style="font-weight:600;color:#344054">{{ c.name }}</span><span style="font-size:11px;color:#98a2b3">{{ c.owner }}</span></div>
-                  </sc-for>
-                  <sc-if value="{{ noCustomSources }}" hint-placeholder-val="{{ false }}">
-                    <div style="padding:10px 12px;color:#98a2b3;font-size:12px">아직 커스텀 웹훅이 없습니다. 상단 '커스텀 웹훅' 버튼으로 먼저 만들어주세요.</div>
-                  </sc-if>
-                </div>
-              </sc-if>
-            </div>
-          </div>
-
-          <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">조건 필터 <span style="font-weight:400;color:#98a2b3">· 비워두면 모든 payload 매칭 · 여러 조건은 AND</span></label>
-            <sc-if value="{{ hasPayloadKeys }}" hint-placeholder-val="{{ false }}">
-              <div style="margin-bottom:8px">
-                <div style="font-size:11px;color:#98a2b3;margin-bottom:5px">최근 수신 payload 의 key — 클릭하면 입력됩니다</div>
-                <div style="display:flex;flex-wrap:wrap;gap:5px">
-                  <sc-for list="{{ payloadKeys }}" as="k" hint-placeholder-count="0">
-                    <span onClick="{{ k.onPick }}" style="padding:3px 9px;border-radius:999px;border:1px solid #bae6fd;background:#f0f9ff;color:#0369a1;font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer" style-hover="background:#e0f2fe">{{ k.key }}</span>
-                  </sc-for>
-                </div>
-              </div>
-            </sc-if>
-            <div style="display:flex;gap:8px;margin-bottom:8px">
-              <input value="{{ condKey }}" onChange="{{ onCondKey }}" onKeyDown="{{ onCondKeyDown }}" placeholder="key (예: result.status)" style="flex:1.2;min-width:0;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
-              <select value="{{ condOp }}" onChange="{{ onCondOp }}" style="flex:none;width:110px;padding:9px 10px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;background:#fff">
-                <option value="eq">= equal</option>
-                <option value="ne">≠ not equal</option>
-                <option value="like">like (포함)</option>
-              </select>
-              <input value="{{ condValue }}" onChange="{{ onCondValue }}" onKeyDown="{{ onCondKeyDown }}" placeholder="value" style="flex:1;min-width:0;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
-              <button onClick="{{ onAddCond }}" style="flex:none;background:#eef0f4;border:1px solid #d0d5dd;border-radius:8px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer;color:#344054">추가</button>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:6px">
-              <sc-for list="{{ condRows }}" as="c" hint-placeholder-count="0">
-                <div style="display:flex;align-items:center;gap:8px;background:#f6f7f9;border:1px solid #eceef1;border-radius:7px;padding:7px 8px 7px 11px">
-                  <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#0369a1">{{ c.key }}</span>
-                  <span style="font-size:12px;font-weight:700;color:#475467">{{ c.opLabel }}</span>
-                  <span style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#475467;word-break:break-all">{{ c.value }}</span>
-                  <button onClick="{{ c.onRemove }}" style="flex:none;width:22px;height:22px;border:none;background:#e9ebef;border-radius:5px;cursor:pointer;color:#667085;font-size:12px">✕</button>
-                </div>
-              </sc-for>
-            </div>
-          </div>
-          </sc-if>
 
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">전송 대상 URL <span style="color:#dc2626">*</span></label>
@@ -556,12 +457,6 @@ class Component extends DCLogic {
           {group:'Release', color:'#0891b2', items:[{id:'release.created'},{id:'release.deployed'}]},
         ],
       },
-      custom: {
-        id:'custom', label:'Custom', color:'#0ea5e9', initial:'C',
-        projectLabel:'커스텀 웹훅', projectPlaceholder:'',
-        authorLabel:'', authorPlaceholder:'',
-        projects:[], actions:[],
-      },
     };
     this.state = {
       rules: [], page: 1, query: '', selectedId: null,
@@ -571,8 +466,6 @@ class Component extends DCLogic {
       repoActiveIdx: 0, authorActiveIdx: 0, openActionGroup: null,
       inboundLogs: [], inboundQuery: '', mineOnly: false, guideOpen: false, webhookSecret: '',
       copiedLabel: null,
-      customSources: [], customOpen: false, customName: '', customPickerOpen: false,
-      condKey: '', condOp: 'eq', condValue: '',
     };
     this.load();
     this.loadMe();
@@ -668,57 +561,6 @@ class Component extends DCLogic {
     if (res.status === 401) { location.href = '/login.html'; return; }
     const rules = await res.json();
     this.setState({ rules });
-    this.loadCustomSources();
-  }
-  async loadCustomSources(){
-    const res = await fetch('/api/custom-sources');
-    if (res.ok) this.setState({ customSources: await res.json() });
-  }
-  customSourceName(id){
-    const s = this.state.customSources.find(x => x.id === id);
-    return s ? s.name : '(삭제된 웹훅)';
-  }
-  customUrl(token){ return location.origin + '/webhooks/custom/' + token; }
-  flattenClient(obj, prefix = '', out = {}){
-    if (obj === null || typeof obj !== 'object') { if (prefix) out[prefix] = obj; return out; }
-    const entries = Array.isArray(obj) ? obj.map((v, i) => [i, v]) : Object.entries(obj);
-    for (const [k, v] of entries) {
-      const key = prefix ? prefix + '.' + k : String(k);
-      if (v !== null && typeof v === 'object') this.flattenClient(v, key, out);
-      else out[key] = v;
-    }
-    return out;
-  }
-  opLabel(op){ return op === 'eq' ? '=' : op === 'ne' ? '≠' : 'like'; }
-  addCondition(){
-    const k = this.state.condKey.trim();
-    if (!k) return;
-    this.setState(s => ({
-      draft: { ...s.draft, conditions: [...s.draft.conditions, { key: k, op: s.condOp, value: s.condValue }] },
-      condKey: '', condValue: '',
-    }));
-  }
-  removeCondition(i){
-    this.setState(s => ({ draft: { ...s.draft, conditions: s.draft.conditions.filter((_, x) => x !== i) } }));
-  }
-  async createCustom(){
-    const name = this.state.customName.trim();
-    if (!name) return;
-    const created = await this.api('POST', '/api/custom-sources', { name });
-    if (created) this.setState(s => ({ customSources: [created, ...s.customSources], customName: '' }));
-  }
-  async delCustom(id){
-    if (!window.confirm('이 커스텀 웹훅을 삭제할까요? URL이 즉시 무효화됩니다.')) return;
-    if (await this.api('DELETE', '/api/custom-sources/' + id)) {
-      this.setState(s => ({ customSources: s.customSources.filter(c => c.id !== id) }));
-    }
-  }
-  copyText(label, text){
-    navigator.clipboard.writeText(text).then(() => {
-      this.setState({ copiedLabel: label });
-      clearTimeout(this._copyTimer);
-      this._copyTimer = setTimeout(() => this.setState({ copiedLabel: null }), 1500);
-    });
   }
   async api(method, url, body){
     const res = await fetch(url, {
@@ -734,7 +576,7 @@ class Component extends DCLogic {
     }
     return res.status === 204 ? true : res.json();
   }
-  emptyDraft(){ return {source:'gitlab',name:'',description:'',repos:[],actions:[],authors:[],destinations:[],custom_source_id:null,conditions:[],active:true}; }
+  emptyDraft(){ return {source:'gitlab',name:'',description:'',repos:[],actions:[],authors:[],destinations:[],active:true}; }
 
   // DB 는 SQLite datetime('now') 라 'YYYY-MM-DD HH:MM:SS' UTC. 표시할 때만 KST 로 옮긴다
   toKst(s){
@@ -764,21 +606,19 @@ class Component extends DCLogic {
       this.setState(s => ({ rules: s.rules.filter(r => r.id !== id), selectedId: s.selectedId === id ? null : s.selectedId }));
     }
   }
-  openNew(){ this.setState({modalOpen:true,editingId:null,step:1,draft:this.emptyDraft(),destInput:'',authorInput:'',repoInput:'',repoSuggestions:[],authorSuggestions:[],repoActiveIdx:0,authorActiveIdx:0,openActionGroup:null,customPickerOpen:false,condKey:'',condOp:'eq',condValue:''}); this.loadCustomSources(); }
+  openNew(){ this.setState({modalOpen:true,editingId:null,step:1,draft:this.emptyDraft(),destInput:'',authorInput:'',repoInput:'',repoSuggestions:[],authorSuggestions:[],repoActiveIdx:0,authorActiveIdx:0,openActionGroup:null}); }
   openEdit(id){
     const r = this.state.rules.find(x => x.id === id);
     if (!r) return;
     this.setState({
       modalOpen: true, editingId: id, step: 2,
-      draft: { ...r, active: !!r.active, repos: [...r.repos], actions: [...r.actions], authors: [...r.authors], destinations: [...r.destinations], conditions: [...(r.conditions||[])] },
+      draft: { ...r, active: !!r.active, repos: [...r.repos], actions: [...r.actions], authors: [...r.authors], destinations: [...r.destinations] },
       destInput: '', authorInput: '', repoInput: '', selectedId: null,
       repoSuggestions: [], authorSuggestions: [], repoActiveIdx: 0, authorActiveIdx: 0, openActionGroup: null,
-      customPickerOpen: false, condKey: '', condOp: 'eq', condValue: '',
     });
-    this.loadCustomSources();
   }
   cancel(){ this.setState({modalOpen:false,editingId:null,step:1,destInput:'',authorInput:'',repoInput:'',repoSuggestions:[],authorSuggestions:[],openActionGroup:null}); }
-  pickSource(key){ if(key==='sentry') return; this.setState(s=>({draft:{...s.draft,source:key,repos:[],actions:[],custom_source_id:null,conditions:[]},customPickerOpen:false})); }
+  pickSource(key){ if(key==='sentry') return; this.setState(s=>({draft:{...s.draft,source:key,repos:[],actions:[]}})); }
   goStep2(){ this.setState({step:2}); }
   backToSource(){ if(this.state.editingId) return; this.setState({step:1}); }
   addAuthor(){ const list=this.state.authorSuggestions; if(!list.length) return; this.pickAuthor(list[this.state.authorActiveIdx].username); }
@@ -789,7 +629,7 @@ class Component extends DCLogic {
   toggleIn(arr,v){ return arr.includes(v)?arr.filter(x=>x!==v):[...arr,v]; }
   addDest(){ const v=(this.state.destInput||'').trim(); if(!v) return; this.setState(s=>({draft:{...s.draft,destinations:[...s.draft.destinations,v]},destInput:''})); }
   removeDest(i){ this.setState(s=>({draft:{...s.draft,destinations:s.draft.destinations.filter((_,x)=>x!==i)}})); }
-  canSave(){ const d=this.state.draft; if(d.source==='custom') return d.name.trim() && Number.isInteger(d.custom_source_id) && d.destinations.length>0; return d.name.trim() && d.actions.length>0 && d.destinations.length>0; }
+  canSave(){ const d=this.state.draft; return d.name.trim() && d.actions.length>0 && d.destinations.length>0; }
   async save(){
     if (!this.canSave()) return;
     const d = { ...this.state.draft, name: this.state.draft.name.trim() };
@@ -813,11 +653,6 @@ class Component extends DCLogic {
     return JSON.stringify({object_kind:km[kind]||kind,event_type:km[kind]||kind,project:{path_with_namespace:repo,web_url:'https://gitlab.example.com/'+repo},user:{username:who},object_attributes:{action:action,state:action}},null,2);
   }
 
-  buildCustomSample(rule){
-    const src = this.state.customSources.find(x => x.id === rule.custom_source_id);
-    if (src && src.last_payload) { try { return JSON.stringify(JSON.parse(src.last_payload), null, 2); } catch {} }
-    return '{\n  "아직": "수신된 payload 없음"\n}';
-  }
   renderVals(){
     const accent=this.accent, s=this.state, perPage=this.perPage;
     const q=(s.query||'').trim().toLowerCase();
@@ -840,11 +675,9 @@ class Component extends DCLogic {
         srcInitial:src.initial,
         srcChipStyle:'display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 3px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid '+src.color+'33;background:'+src.color+'14;color:'+src.color,
         srcDotStyle:'width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;background:'+src.color,
-        repoText:r.source==='custom'?this.customSourceName(r.custom_source_id):(r.repos.length?r.repos.join(', '):'모든 프로젝트'),
-        actionBadges:r.source==='custom'
-          ?(r.conditions&&r.conditions.length?r.conditions.map(c=>({id:c.key+' '+this.opLabel(c.op)+' '+c.value,style:this.badgeStyle('#0ea5e9')})):[{id:'모든 payload',style:this.badgeStyle('#0ea5e9')}])
-          :r.actions.map(id=>({id,style:this.badgeStyle(this.colorFor(r.source,id))})),
-        authorText:r.source==='custom'?'-':(r.authors.length?r.authors.join(', '):'모든 작성자'),
+        repoText:r.repos.length?r.repos.join(', '):'모든 프로젝트',
+        actionBadges:r.actions.map(id=>({id,style:this.badgeStyle(this.colorFor(r.source,id))})),
+        authorText:r.authors.length?r.authors.join(', '):'모든 작성자',
         trackStyle:'width:38px;height:22px;border-radius:999px;position:relative;transition:background .15s;flex:none;cursor:'+(mine?'pointer':'default')+';opacity:'+(mine?'1':'.5')+';background:'+(active?accent:'#cbd5e1'),
         knobStyle:'position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s;transform:translateX('+(active?'16px':'0')+')',
         onSelect:()=>this.selectRule(r.id),
@@ -866,7 +699,7 @@ class Component extends DCLogic {
       detail={
         detail_name:sel.name,
         detail_description:sel.description||'설명 없음',
-        detail_repo:sel.source==='custom'?this.customSourceName(sel.custom_source_id):(sel.repos.length?sel.repos.join(', '):'모든 프로젝트'),
+        detail_repo:sel.repos.length?sel.repos.join(', '):'모든 프로젝트',
         detail_srcLabel:ssrc.label,
         detail_srcInitial:ssrc.initial,
         detail_projectLabel:ssrc.projectLabel,
@@ -875,13 +708,11 @@ class Component extends DCLogic {
         detail_srcDotStyle:'width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;background:'+ssrc.color,
         detail_statusText:sel.active?'활성':'비활성',
         detail_statusStyle:'font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;'+(sel.active?'background:#dcfce7;color:#16a34a':'background:#f2f4f7;color:#98a2b3'),
-        detail_actions:sel.source==='custom'
-          ?(sel.conditions&&sel.conditions.length?sel.conditions.map(c=>({id:c.key+' '+this.opLabel(c.op)+' '+c.value,style:this.badgeStyle('#0ea5e9')})):[{id:'모든 payload',style:this.badgeStyle('#0ea5e9')}])
-          :sel.actions.map(id=>({id,style:this.badgeStyle(this.colorFor(sel.source,id))})),
+        detail_actions:sel.actions.map(id=>({id,style:this.badgeStyle(this.colorFor(sel.source,id))})),
         detail_authors:sel.authors.length?sel.authors.map(a=>({handle:a,initial:a.replace('@','').charAt(0).toUpperCase()})):[{handle:'모든 작성자 허용',initial:'∗'}],
         detail_destinations:sel.destinations.map(url=>({url})),
         detail_destCount:sel.destinations.length,
-        detail_sample:sel.source==='custom'?this.buildCustomSample(sel):this.buildSample(sel),
+        detail_sample:this.buildSample(sel),
         detail_actionsStyle:sel.mine?'padding:16px 22px;border-top:1px solid #eceef1;display:flex;gap:10px':'display:none',
         detail_onEdit:()=>this.openEdit(sel.id),
         detail_onDelete:()=>this.del(sel.id),
@@ -891,7 +722,7 @@ class Component extends DCLogic {
     // modal
     const d=s.draft;
     const dsrc=this.srcOf(d.source);
-    const srcBlurb={gitlab:'이슈 · 머지 리퀘스트 · 파이프라인 이벤트',sentry:'이슈 · 메트릭 알럿 · 릴리즈 이벤트',custom:'유니크 URL로 임의 JSON payload 수신 · key 조건 필터'};
+    const srcBlurb={gitlab:'이슈 · 머지 리퀘스트 · 파이프라인 이벤트',sentry:'이슈 · 메트릭 알럿 · 릴리즈 이벤트'};
     const sourceOptions=Object.values(this.sources).map(src=>{const on=d.source===src.id;const disabled=src.id==='sentry';return {
       label:src.label+(disabled?' — 지원 예정':''), initial:src.initial,
       blurb:disabled?'아직 지원하지 않습니다. 곧 추가될 예정이에요.':(srcBlurb[src.id]||''),
@@ -995,49 +826,6 @@ class Component extends DCLogic {
       draft_authorLabel:dsrc.authorLabel,
       draft_authorPlaceholder:dsrc.authorPlaceholder,
       sourceOptions,
-      isGitlabDraft:d.source==='gitlab',
-      isCustomDraft:d.source==='custom',
-      customPickerOpen:s.customPickerOpen,
-      onToggleCustomPicker:(e)=>{e.stopPropagation();this.setState(st=>({customPickerOpen:!st.customPickerOpen}));},
-      customPickedName:d.custom_source_id?this.customSourceName(d.custom_source_id):'웹훅 선택…',
-      customPickerBtnStyle:'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:8px;cursor:pointer;user-select:none;border:1px solid '+(d.custom_source_id?'#0ea5e9':'#d0d5dd')+';background:'+(d.custom_source_id?'#0ea5e90d':'#fff')+';font-size:13px;color:'+(d.custom_source_id?'#0c4a6e':'#98a2b3'),
-      customSourceOptions:s.customSources.map(c=>({
-        name:c.name, owner:c.owner_name,
-        style:'padding:9px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;background:'+(d.custom_source_id===c.id?'#eef2ff':'#fff'),
-        onPick:(e)=>{e.stopPropagation();this.setState(st=>({draft:{...st.draft,custom_source_id:c.id},customPickerOpen:false}));},
-      })),
-      noCustomSources:s.customSources.length===0,
-      payloadKeys:(()=>{
-        const src=s.customSources.find(x=>x.id===d.custom_source_id);
-        if(!src||!src.last_payload) return [];
-        try { return Object.keys(this.flattenClient(JSON.parse(src.last_payload))).slice(0,30).map(k=>({key:k,onPick:()=>this.setState({condKey:k})})); } catch { return []; }
-      })(),
-      hasPayloadKeys:(()=>{ const src=s.customSources.find(x=>x.id===d.custom_source_id); return !!(src&&src.last_payload); })(),
-      condKey:s.condKey, onCondKey:(e)=>this.setState({condKey:e.target.value}),
-      condOp:s.condOp, onCondOp:(e)=>this.setState({condOp:e.target.value}),
-      condValue:s.condValue, onCondValue:(e)=>this.setState({condValue:e.target.value}),
-      onCondKeyDown:(e)=>{if(e.key==='Enter'){e.preventDefault();this.addCondition();}},
-      onAddCond:()=>this.addCondition(),
-      condRows:d.conditions.map((c,i)=>({key:c.key,opLabel:this.opLabel(c.op),value:c.value===''?'(빈 값)':c.value,onRemove:()=>this.removeCondition(i)})),
-      customOpen:s.customOpen,
-      onOpenCustom:()=>{this.setState({customOpen:true});this.loadCustomSources();},
-      onCloseCustom:()=>this.setState({customOpen:false}),
-      customName:s.customName, onCustomName:(e)=>this.setState({customName:e.target.value}),
-      onCustomNameKey:(e)=>{if(e.key==='Enter'){e.preventDefault();this.createCustom();}},
-      onCreateCustom:()=>this.createCustom(),
-      customList:s.customSources.map(c=>{
-        const url=this.customUrl(c.token);
-        const copied=s.copiedLabel==='custom-'+c.id;
-        return {
-          name:c.name, owner:c.owner_name, url,
-          copyLabel:copied?'복사됨':'복사',
-          copyStyle:'flex:none;border:1px solid '+(copied?'#16a34a':'#d0d5dd')+';background:#fff;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;color:'+(copied?'#16a34a':'#344054'),
-          onCopy:()=>this.copyText('custom-'+c.id,url),
-          delStyle:'flex:none;width:28px;height:28px;border:1px solid #e4e7ec;background:#fff;border-radius:7px;cursor:pointer;color:#98a2b3;font-size:12px'+(c.mine?'':';visibility:hidden'),
-          onDelete:()=>this.delCustom(c.id),
-          keyCount:(()=>{ if(!c.last_payload) return '수신 전'; try { return Object.keys(this.flattenClient(JSON.parse(c.last_payload))).length+' keys'; } catch { return '?'; } })(),
-        };
-      }),
       isStep1:s.modalOpen&&s.step===1,
       isStep2:s.modalOpen&&s.step===2,
       canGoBack:!s.editingId,
