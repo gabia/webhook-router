@@ -3,9 +3,9 @@ import cookieSession from 'cookie-session';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { authRouter, requireAuth } from './auth.js';
-import { listRules, createRule, updateRule, deleteRule, validateRule, logInbound, listInbound, createCustomSource, listCustomSources, deleteCustomSource, findCustomSourceByToken, saveLastPayload } from './rules-db.js';
+import { listRules, createRule, updateRule, deleteRule, validateRule, logInbound, listInbound } from './rules-db.js';
 import { normalizeGitlab } from './gitlab.js';
-import { dispatchEvent, dispatchCustom } from './dispatch.js';
+import { dispatchEvent } from './dispatch.js';
 
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../public');
 
@@ -38,22 +38,6 @@ export function createApp(db, env, { testSession } = {}) {
       .catch(err => console.error('dispatch 실패:', err.message));
   });
 
-  // 커스텀 웹훅 수신 — 토큰이 곧 인증 (메신저+ incoming webhook 방식)
-  app.post('/webhooks/custom/:token', (req, res) => {
-    const source = findCustomSourceByToken(db, req.params.token);
-    if (!source) return res.status(404).json({ error: '유효하지 않은 웹훅 URL입니다' });
-    res.status(200).json({ ok: true });
-    const payload = (req.body && typeof req.body === 'object') ? req.body : {};
-    saveLastPayload(db, source.id, payload);
-    dispatchCustom(db, source, payload)
-      .then(r => logInbound(db, {
-        source: 'custom', repo: source.name, action: 'custom',
-        title: Object.keys(payload).slice(0, 5).join(', '), url: '',
-        matched: r.matched, delivered_ok: r.ok, delivered_fail: r.fail,
-      }))
-      .catch(err => console.error('custom dispatch 실패:', err.message));
-  });
-
   app.use(testSession ?? cookieSession({
     name: 'session',
     secret: env.SESSION_SECRET,
@@ -69,21 +53,6 @@ export function createApp(db, env, { testSession } = {}) {
   });
 
   app.get('/api/rules', requireAuth, (req, res) => res.json(listRules(db, req.userId)));
-
-  app.get('/api/custom-sources', requireAuth, (req, res) => res.json(listCustomSources(db, req.userId)));
-
-  app.post('/api/custom-sources', requireAuth, (req, res) => {
-    const name = (req.body?.name ?? '').toString().trim();
-    if (!name) return res.status(400).json({ error: '이름은 필수입니다' });
-    res.status(201).json(createCustomSource(db, req.userId, name));
-  });
-
-  app.delete('/api/custom-sources/:id', requireAuth, (req, res) => {
-    if (!deleteCustomSource(db, req.userId, Number(req.params.id))) {
-      return res.status(404).json({ error: '웹훅을 찾을 수 없습니다' });
-    }
-    res.status(204).end();
-  });
 
   app.get('/api/inbound-logs', requireAuth, (req, res) =>
     res.json(listInbound(db, 10, (req.query.repo ?? '').toString())));
