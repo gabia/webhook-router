@@ -42,6 +42,10 @@ export function createApp(db, env, { testSession } = {}) {
   app.post('/webhooks/custom/:token', (req, res) => {
     const source = findCustomSourceByToken(db, req.params.token);
     if (!source) return res.status(404).json({ error: '유효하지 않은 웹훅 URL입니다' });
+    if (source.secret && req.get('X-Webhook-Secret') !== source.secret) {
+      logInbound(db, { source: 'custom', repo: source.name, action: '(거부: secret 불일치)' });
+      return res.status(401).json({ error: 'secret 불일치' });
+    }
     res.status(200).json({ ok: true });
     const payload = (req.body && typeof req.body === 'object') ? req.body : {};
     saveLastPayload(db, source.id, payload);
@@ -75,7 +79,7 @@ export function createApp(db, env, { testSession } = {}) {
   app.post('/api/custom-sources', requireAuth, (req, res) => {
     const name = (req.body?.name ?? '').toString().trim();
     if (!name) return res.status(400).json({ error: '이름은 필수입니다' });
-    res.status(201).json(createCustomSource(db, req.userId, name));
+    res.status(201).json(createCustomSource(db, req.userId, name, (req.body?.secret ?? '').toString()));
   });
 
   app.delete('/api/custom-sources/:id', requireAuth, (req, res) => {
@@ -140,9 +144,18 @@ export function createApp(db, env, { testSession } = {}) {
     }
   });
 
+  // custom 규칙은 본인 소유 웹훅에만 걸 수 있다
+  const ownsCustomSource = (userId, sourceId) => {
+    const row = db.prepare('SELECT user_id FROM custom_sources WHERE id = ?').get(sourceId);
+    return !!row && row.user_id === userId;
+  };
+
   app.post('/api/rules', requireAuth, (req, res) => {
     const v = validateRule(req.body);
     if (!v.ok) return res.status(400).json({ error: v.error });
+    if (req.body.source === 'custom' && !ownsCustomSource(req.userId, req.body.custom_source_id)) {
+      return res.status(400).json({ error: '본인이 만든 커스텀 웹훅에만 규칙을 걸 수 있습니다' });
+    }
     res.status(201).json(createRule(db, req.userId, req.body));
   });
 

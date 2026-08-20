@@ -23,6 +23,8 @@ export function openDb(path) {
       destinations TEXT NOT NULL,   -- JSON array of URLs
       custom_source_id INTEGER,     -- source='custom' 일 때 custom_sources.id
       conditions TEXT NOT NULL DEFAULT '[]', -- JSON [{key,op,value}]
+      send_mode TEXT NOT NULL DEFAULT 'messenger' CHECK (send_mode IN ('messenger','template')),
+      template TEXT,                -- send_mode='template' 일 때 발신 JSON ({{key}} 치환)
       active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT
@@ -32,6 +34,7 @@ export function openDb(path) {
       user_id INTEGER NOT NULL REFERENCES users(id),
       name TEXT NOT NULL,
       token TEXT NOT NULL UNIQUE,
+      secret TEXT,                  -- 선택: 설정 시 X-Webhook-Secret 헤더 검증
       last_payload TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -85,6 +88,8 @@ export function openDb(path) {
         destinations TEXT NOT NULL,
         custom_source_id INTEGER,
         conditions TEXT NOT NULL DEFAULT '[]',
+        send_mode TEXT NOT NULL DEFAULT 'messenger' CHECK (send_mode IN ('messenger','template')),
+        template TEXT,
         active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT
@@ -95,6 +100,18 @@ export function openDb(path) {
       ALTER TABLE rules_new RENAME TO rules;
     `);
     db.pragma('foreign_keys = ON');
+  }
+  // 구 커스텀 스키마(재생성은 이미 됐지만 send_mode/template/secret 없던 버전) 보정
+  const ruleCols = db.prepare('PRAGMA table_info(rules)').all().map(c => c.name);
+  if (!ruleCols.includes('send_mode')) {
+    db.exec("ALTER TABLE rules ADD COLUMN send_mode TEXT NOT NULL DEFAULT 'messenger'");
+  }
+  if (!ruleCols.includes('template')) {
+    db.exec('ALTER TABLE rules ADD COLUMN template TEXT');
+  }
+  const srcCols = db.prepare('PRAGMA table_info(custom_sources)').all().map(c => c.name);
+  if (!srcCols.includes('secret')) {
+    db.exec('ALTER TABLE custom_sources ADD COLUMN secret TEXT');
   }
   return db;
 }

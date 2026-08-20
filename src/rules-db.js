@@ -33,6 +33,15 @@ export function validateRule(d) {
         return { ok: false, error: '조건은 key · operator(eq/ne/like) · value 형식입니다' };
       }
     }
+    if (!['messenger', 'template'].includes(d.send_mode)) return { ok: false, error: '발신 방식을 선택하세요' };
+    if (d.send_mode === 'template') {
+      try {
+        const t = JSON.parse(d.template);
+        if (t === null || typeof t !== 'object') throw new Error();
+      } catch {
+        return { ok: false, error: '템플릿은 유효한 JSON 객체여야 합니다' };
+      }
+    }
   } else {
     if (!Array.isArray(d.repos)) return { ok: false, error: '잘못된 프로젝트 목록' };  // [] = 모든 프로젝트
     if (!Array.isArray(d.actions) || d.actions.length === 0) return { ok: false, error: 'Action을 1개 이상 선택하세요' };
@@ -52,13 +61,16 @@ export function validateRule(d) {
 
 export function createRule(db, userId, d) {
   const info = db.prepare(`
-    INSERT INTO rules (user_id, name, description, source, repos, actions, authors, destinations, custom_source_id, conditions, active, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    INSERT INTO rules (user_id, name, description, source, repos, actions, authors, destinations, custom_source_id, conditions, send_mode, template, active, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
   `).run(
     userId, d.name.trim(), d.description ?? '', d.source, JSON.stringify(cleanRepos(d.repos ?? [])),
     JSON.stringify(d.actions ?? []), JSON.stringify(d.authors ?? []),
     JSON.stringify(d.destinations), d.source === 'custom' ? d.custom_source_id : null,
-    JSON.stringify(d.conditions ?? []), d.active ? 1 : 0,
+    JSON.stringify(d.conditions ?? []),
+    d.source === 'custom' ? (d.send_mode ?? 'messenger') : 'messenger',
+    d.send_mode === 'template' ? d.template : null,
+    d.active ? 1 : 0,
   );
   return parse(db.prepare('SELECT * FROM rules WHERE id = ?').get(info.lastInsertRowid));
 }
@@ -74,12 +86,14 @@ export function listRules(db, userId) {
 
 export function updateRule(db, userId, id, d) {
   const info = db.prepare(`
-    UPDATE rules SET name=?, description=?, repos=?, actions=?, authors=?, destinations=?, conditions=?, active=?, updated_at=datetime('now')
+    UPDATE rules SET name=?, description=?, repos=?, actions=?, authors=?, destinations=?, conditions=?, send_mode=?, template=?, active=?, updated_at=datetime('now')
     WHERE id = ? AND user_id = ?
   `).run(
     d.name.trim(), d.description ?? '', JSON.stringify(cleanRepos(d.repos ?? [])),
     JSON.stringify(d.actions ?? []), JSON.stringify(d.authors ?? []),
-    JSON.stringify(d.destinations), JSON.stringify(d.conditions ?? []), d.active ? 1 : 0,
+    JSON.stringify(d.destinations), JSON.stringify(d.conditions ?? []),
+    d.send_mode ?? 'messenger', d.send_mode === 'template' ? d.template : null,
+    d.active ? 1 : 0,
     id, userId,
   );
   if (info.changes === 0) return null;
@@ -118,10 +132,10 @@ export function listInbound(db, limit = 50, repo = '') {
 
 // ---------- custom webhook sources ----------
 
-export function createCustomSource(db, userId, name) {
+export function createCustomSource(db, userId, name, secret = '') {
   const token = randomBytes(20).toString('hex');
-  const info = db.prepare('INSERT INTO custom_sources (user_id, name, token) VALUES (?, ?, ?)')
-    .run(userId, String(name).trim(), token);
+  const info = db.prepare('INSERT INTO custom_sources (user_id, name, token, secret) VALUES (?, ?, ?, ?)')
+    .run(userId, String(name).trim(), token, String(secret ?? '').trim() || null);
   return db.prepare('SELECT * FROM custom_sources WHERE id = ?').get(info.lastInsertRowid);
 }
 
@@ -131,7 +145,7 @@ export function listCustomSources(db, userId) {
     SELECT s.*, u.name AS owner_name, (s.user_id = ?) AS mine
     FROM custom_sources s JOIN users u ON u.id = s.user_id
     ORDER BY s.id DESC
-  `).all(userId);
+  `).all(userId).map(s2 => s2.mine ? s2 : { ...s2, token: null, secret: null });
 }
 
 export function deleteCustomSource(db, userId, id) {

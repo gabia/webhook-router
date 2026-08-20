@@ -113,6 +113,7 @@ export function flattenPayload(obj, prefix = '', out = {}) {
 const condStr = (v) => v == null ? '' : String(v);
 
 function evalCondition(flat, { key, op, value }) {
+  if (!(key in flat)) return true; // payload 에 key 가 없으면 해당 조건은 통과 (설계 합의)
   const v = condStr(flat[key]);
   if (op === 'eq') return v === value;
   if (op === 'ne') return v !== value;
@@ -140,13 +141,55 @@ export function formatCustomMessage(sourceName, flat) {
   };
 }
 
+// 원본 payload 에서 점표기 경로 조회 — 객체/배열 타입 그대로 반환
+function getByPath(payload, path) {
+  let cur = payload;
+  for (const part of path.split('.')) {
+    if (cur === null || typeof cur !== 'object') return undefined;
+    cur = cur[Array.isArray(cur) ? Number(part) : part];
+  }
+  return cur;
+}
+
+const HOLE = /\{\{\s*([^{}]+?)\s*\}\}/g;
+
+// 템플릿 JSON 재귀 치환: 값이 정확히 "{{key}}" 하나면 원 타입 유지, 문장 속이면 문자열 삽입, 없는 key 는 빈값
+export function renderTemplate(node, payload) {
+  if (typeof node === 'string') {
+    const exact = node.match(/^\{\{\s*([^{}]+?)\s*\}\}$/);
+    if (exact) {
+      const v = getByPath(payload, exact[1]);
+      return v === undefined ? '' : v;
+    }
+    return node.replace(HOLE, (_, key) => {
+      const v = getByPath(payload, key.trim());
+      return v === undefined || v === null ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+    });
+  }
+  if (Array.isArray(node)) return node.map(n => renderTemplate(n, payload));
+  if (node !== null && typeof node === 'object') {
+    return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, renderTemplate(v, payload)]));
+  }
+  return node;
+}
+
 export async function dispatchCustom(db, customSource, payload) {
   const flat = flattenPayload(payload);
   const rules = matchCustomRules(findActiveRules(db, 'custom'), customSource.id, flat);
-  const message = formatCustomMessage(customSource.name, flat);
   let ok = 0, fail = 0;
 
   for (const rule of rules) {
+    let message;
+    if (rule.send_mode === 'template' && rule.template) {
+      try {
+        message = renderTemplate(JSON.parse(rule.template), payload);
+      } catch {
+        message = formatCustomMessage(customSource.name, flat); // 템플릿 파싱 실패 시 요약 폴백
+      }
+    } else {
+      message = formatCustomMessage(customSource.name, flat);
+    }
+    const summaryText = `[${customSource.name}] 커스텀 웹훅 (${rule.send_mode === 'template' ? '템플릿' : '메신저 요약'})`;
     for (const url of rule.destinations) {
       const host = (() => { try { return new URL(url).host; } catch { return '?'; } })();
       let error = null;
@@ -162,7 +205,7 @@ export async function dispatchCustom(db, customSource, payload) {
       error ? fail++ : ok++;
       logDelivery(db, {
         rule_id: rule.id,
-        summary: message.text.slice(0, 200),
+        summary: summaryText.slice(0, 200),
         status: error ? 'fail' : 'success',
         error,
       });

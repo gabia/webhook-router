@@ -233,7 +233,8 @@
             규칙에서 payload 의 key 값 조건(= / ≠ / like)으로 필터링해 재전송할 수 있습니다.
           </div>
           <div style="display:flex;gap:8px">
-            <input value="{{ customName }}" onChange="{{ onCustomName }}" onKeyDown="{{ onCustomNameKey }}" placeholder="웹훅 이름 (예: 배포 알림봇)" style="flex:1;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px" />
+            <input value="{{ customName }}" onChange="{{ onCustomName }}" onKeyDown="{{ onCustomNameKey }}" placeholder="웹훅 이름 (예: 배포 알림봇)" style="flex:1.2;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px" />
+            <input value="{{ customSecret }}" onChange="{{ onCustomSecret }}" onKeyDown="{{ onCustomNameKey }}" placeholder="secret (선택 — X-Webhook-Secret 헤더 검증)" style="flex:1;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
             <button onClick="{{ onCreateCustom }}" style="flex:none;background:var(--accent,#4f46e5);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">＋ 생성</button>
           </div>
           <div style="display:flex;flex-direction:column;gap:8px">
@@ -246,9 +247,10 @@
                   <button onClick="{{ c.onDelete }}" title="삭제" style="{{ c.delStyle }}">🗑</button>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;background:#f6f7f9;border:1px solid #eceef1;border-radius:7px;padding:7px 8px 7px 11px">
-                  <span style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#475467;word-break:break-all">{{ c.url }}</span>
+                  <span style="{{ c.urlStyle }}">{{ c.url }}</span>
                   <button onClick="{{ c.onCopy }}" style="{{ c.copyStyle }}">{{ c.copyLabel }}</button>
                 </div>
+                <div style="font-size:11px;color:#98a2b3;font-family:'IBM Plex Mono',monospace">{{ c.secretText }}</div>
               </div>
             </sc-for>
           </div>
@@ -428,7 +430,7 @@
                     <div onClick="{{ c.onPick }}" style="{{ c.style }}" style-hover="background:#f6f7f9"><span style="font-weight:600;color:#344054">{{ c.name }}</span><span style="font-size:11px;color:#98a2b3">{{ c.owner }}</span></div>
                   </sc-for>
                   <sc-if value="{{ noCustomSources }}" hint-placeholder-val="{{ false }}">
-                    <div style="padding:10px 12px;color:#98a2b3;font-size:12px">아직 커스텀 웹훅이 없습니다. 상단 '커스텀 웹훅' 버튼으로 먼저 만들어주세요.</div>
+                    <div style="padding:10px 12px;color:#98a2b3;font-size:12px">내가 만든 커스텀 웹훅이 없습니다. 상단 '커스텀 웹훅' 버튼으로 먼저 만들어주세요. (규칙은 본인 웹훅에만 걸 수 있어요)</div>
                   </sc-if>
                 </div>
               </sc-if>
@@ -437,6 +439,9 @@
 
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">조건 필터 <span style="font-weight:400;color:#98a2b3">· 비워두면 모든 payload 매칭 · 여러 조건은 AND</span></label>
+            <sc-if value="{{ noPayloadYet }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-bottom:8px;padding:9px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#92400e">이 웹훅으로 payload 를 한 번 보내야 key 를 선택할 수 있습니다.</div>
+            </sc-if>
             <sc-if value="{{ hasPayloadKeys }}" hint-placeholder-val="{{ false }}">
               <div style="margin-bottom:8px">
                 <div style="font-size:11px;color:#98a2b3;margin-bottom:5px">최근 수신 payload 의 key — 클릭하면 입력됩니다</div>
@@ -448,13 +453,13 @@
               </div>
             </sc-if>
             <div style="display:flex;gap:8px;margin-bottom:8px">
-              <input value="{{ condKey }}" onChange="{{ onCondKey }}" onKeyDown="{{ onCondKeyDown }}" placeholder="key (예: result.status)" style="flex:1.2;min-width:0;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
+              <input value="{{ condKey }}" readonly placeholder="위 payload key 를 클릭해 선택" style="flex:1.2;min-width:0;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace;background:#fafbfc;cursor:default" />
               <select value="{{ condOp }}" onChange="{{ onCondOp }}" style="flex:none;width:110px;padding:9px 10px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;background:#fff">
                 <option value="eq">= equal</option>
                 <option value="ne">≠ not equal</option>
                 <option value="like">like (포함)</option>
               </select>
-              <input value="{{ condValue }}" onChange="{{ onCondValue }}" onKeyDown="{{ onCondKeyDown }}" placeholder="value" style="flex:1;min-width:0;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
+              <input value="{{ condValue }}" onChange="{{ onCondValue }}" placeholder="value" style="flex:1;min-width:0;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace" />
               <button onClick="{{ onAddCond }}" style="flex:none;background:#eef0f4;border:1px solid #d0d5dd;border-radius:8px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer;color:#344054">추가</button>
             </div>
             <div style="display:flex;flex-direction:column;gap:6px">
@@ -463,10 +468,33 @@
                   <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#0369a1">{{ c.key }}</span>
                   <span style="font-size:12px;font-weight:700;color:#475467">{{ c.opLabel }}</span>
                   <span style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#475467;word-break:break-all">{{ c.value }}</span>
+                  <span style="flex:none;font-size:11px;color:#d97706">{{ c.warn }}</span>
                   <button onClick="{{ c.onRemove }}" style="flex:none;width:22px;height:22px;border:none;background:#e9ebef;border-radius:5px;cursor:pointer;color:#667085;font-size:12px">✕</button>
                 </div>
               </sc-for>
             </div>
+          </div>
+
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:#344054;margin-bottom:8px">발신 방식 <span style="color:#dc2626">*</span></label>
+            <div style="display:flex;gap:4px;background:#eef0f4;border-radius:9px;padding:4px;margin-bottom:10px">
+              <div onClick="{{ onSendModeMsg }}" style="{{ sendModeMsgStyle }}">메신저+/메타모스트</div>
+              <div onClick="{{ onSendModeTpl }}" style="{{ sendModeTplStyle }}">커스텀 템플릿</div>
+            </div>
+            <sc-if value="{{ isTemplateMode }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:11px;color:#98a2b3;margin-bottom:6px;line-height:1.6">발신할 JSON 을 작성하세요.<br>아래 key 를 클릭하면 커서 위치에 치환 토큰이 삽입됩니다.</div>
+              <sc-if value="{{ hasPayloadKeys }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+                  <sc-for list="{{ templateKeys }}" as="k" hint-placeholder-count="0">
+                    <span onClick="{{ k.onPick }}" style="padding:3px 9px;border-radius:999px;border:1px solid #bae6fd;background:#f0f9ff;color:#0369a1;font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer" style-hover="background:#e0f2fe">{{ k.key }}</span>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <textarea id="tpl-editor" value="{{ draftTemplate }}" onChange="{{ onDraftTemplate }}" onKeyDown="{{ onTemplateKey }}" rows="6" placeholder="치환 예시는 위 설명 참고" style="width:100%;padding:10px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:12.5px;font-family:'IBM Plex Mono',monospace;line-height:1.5;resize:vertical"></textarea>
+              <sc-if value="{{ templateInvalid }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:11px;color:#dc2626;margin-top:4px">유효한 JSON 객체가 아닙니다</div>
+              </sc-if>
+            </sc-if>
           </div>
           </sc-if>
 
@@ -571,7 +599,7 @@ class Component extends DCLogic {
       repoActiveIdx: 0, authorActiveIdx: 0, openActionGroup: null,
       inboundLogs: [], inboundQuery: '', mineOnly: false, guideOpen: false, webhookSecret: '',
       copiedLabel: null,
-      customSources: [], customOpen: false, customName: '', customPickerOpen: false,
+      customSources: [], customOpen: false, customName: '', customSecret: '', customPickerOpen: false,
       condKey: '', condOp: 'eq', condValue: '',
     };
     this.load();
@@ -701,11 +729,26 @@ class Component extends DCLogic {
   removeCondition(i){
     this.setState(s => ({ draft: { ...s.draft, conditions: s.draft.conditions.filter((_, x) => x !== i) } }));
   }
+  insertTemplateKey(key){
+    const token = '{{' + key + '}}';
+    const el = document.getElementById('tpl-editor');
+    if (el) {
+      const s0 = el.selectionStart ?? el.value.length, e0 = el.selectionEnd ?? s0;
+      const next = el.value.slice(0, s0) + token + el.value.slice(e0);
+      this.patchDraft({ template: next });
+      requestAnimationFrame(() => { try { el.focus(); el.selectionStart = el.selectionEnd = s0 + token.length; } catch {} });
+    } else {
+      this.patchDraft({ template: (this.state.draft.template || '') + token });
+    }
+  }
   async createCustom(){
     const name = this.state.customName.trim();
     if (!name) return;
-    const created = await this.api('POST', '/api/custom-sources', { name });
-    if (created) this.setState(s => ({ customSources: [created, ...s.customSources], customName: '' }));
+    const created = await this.api('POST', '/api/custom-sources', { name, secret: this.state.customSecret.trim() });
+    if (created) {
+      this.setState({ customName: '', customSecret: '' });
+      await this.loadCustomSources(); // mine/owner 플래그 포함 목록으로 갱신 → URL 즉시 노출
+    }
   }
   async delCustom(id){
     if (!window.confirm('이 커스텀 웹훅을 삭제할까요? URL이 즉시 무효화됩니다.')) return;
@@ -734,7 +777,7 @@ class Component extends DCLogic {
     }
     return res.status === 204 ? true : res.json();
   }
-  emptyDraft(){ return {source:'gitlab',name:'',description:'',repos:[],actions:[],authors:[],destinations:[],custom_source_id:null,conditions:[],active:true}; }
+  emptyDraft(){ return {source:'gitlab',name:'',description:'',repos:[],actions:[],authors:[],destinations:[],custom_source_id:null,conditions:[],send_mode:'messenger',template:'',active:true}; }
 
   // DB 는 SQLite datetime('now') 라 'YYYY-MM-DD HH:MM:SS' UTC. 표시할 때만 KST 로 옮긴다
   toKst(s){
@@ -756,7 +799,7 @@ class Component extends DCLogic {
     const r = this.state.rules.find(x => x.id === id);
     if (!r) return;
     const updated = await this.api('PUT', '/api/rules/' + id, { ...r, active: !r.active });
-    if (updated) this.setState(s => ({ rules: s.rules.map(x => x.id === id ? updated : x) }));
+    if (updated) await this.load();
   }
   async del(id){
     if (!window.confirm('이 규칙을 삭제할까요?')) return;
@@ -770,7 +813,7 @@ class Component extends DCLogic {
     if (!r) return;
     this.setState({
       modalOpen: true, editingId: id, step: 2,
-      draft: { ...r, active: !!r.active, repos: [...r.repos], actions: [...r.actions], authors: [...r.authors], destinations: [...r.destinations], conditions: [...(r.conditions||[])] },
+      draft: { ...r, active: !!r.active, repos: [...r.repos], actions: [...r.actions], authors: [...r.authors], destinations: [...r.destinations], conditions: [...(r.conditions||[])], send_mode: r.send_mode||'messenger', template: r.template||'' },
       destInput: '', authorInput: '', repoInput: '', selectedId: null,
       repoSuggestions: [], authorSuggestions: [], repoActiveIdx: 0, authorActiveIdx: 0, openActionGroup: null,
       customPickerOpen: false, condKey: '', condOp: 'eq', condValue: '',
@@ -789,16 +832,24 @@ class Component extends DCLogic {
   toggleIn(arr,v){ return arr.includes(v)?arr.filter(x=>x!==v):[...arr,v]; }
   addDest(){ const v=(this.state.destInput||'').trim(); if(!v) return; this.setState(s=>({draft:{...s.draft,destinations:[...s.draft.destinations,v]},destInput:''})); }
   removeDest(i){ this.setState(s=>({draft:{...s.draft,destinations:s.draft.destinations.filter((_,x)=>x!==i)}})); }
-  canSave(){ const d=this.state.draft; if(d.source==='custom') return d.name.trim() && Number.isInteger(d.custom_source_id) && d.destinations.length>0; return d.name.trim() && d.actions.length>0 && d.destinations.length>0; }
+  canSave(){
+    const d=this.state.draft;
+    if(d.source==='custom'){
+      if(!(d.name.trim() && Number.isInteger(d.custom_source_id) && d.destinations.length>0)) return false;
+      if(d.send_mode==='template'){ try { const t=JSON.parse(d.template); if(t===null||typeof t!=='object') return false; } catch { return false; } }
+      return true;
+    }
+    return d.name.trim() && d.actions.length>0 && d.destinations.length>0;
+  }
   async save(){
     if (!this.canSave()) return;
     const d = { ...this.state.draft, name: this.state.draft.name.trim() };
-    if (this.state.editingId) {
-      const updated = await this.api('PUT', '/api/rules/' + this.state.editingId, d);
-      if (updated) this.setState(s => ({ rules: s.rules.map(r => r.id === s.editingId ? updated : r), modalOpen: false, editingId: null }));
-    } else {
-      const created = await this.api('POST', '/api/rules', d);
-      if (created) this.setState(s => ({ rules: [created, ...s.rules], modalOpen: false, page: 1 }));
+    const ok = this.state.editingId
+      ? await this.api('PUT', '/api/rules/' + this.state.editingId, d)
+      : await this.api('POST', '/api/rules', d);
+    if (ok) {
+      this.setState({ modalOpen: false, editingId: null, page: 1 });
+      await this.load(); // 서버 목록으로 갱신 — mine/owner_name 포함
     }
   }
 
@@ -844,7 +895,7 @@ class Component extends DCLogic {
         actionBadges:r.source==='custom'
           ?(r.conditions&&r.conditions.length?r.conditions.map(c=>({id:c.key+' '+this.opLabel(c.op)+' '+c.value,style:this.badgeStyle('#0ea5e9')})):[{id:'모든 payload',style:this.badgeStyle('#0ea5e9')}])
           :r.actions.map(id=>({id,style:this.badgeStyle(this.colorFor(r.source,id))})),
-        authorText:r.source==='custom'?'-':(r.authors.length?r.authors.join(', '):'모든 작성자'),
+        authorText:r.source==='custom'?(r.owner_name||'-'):(r.authors.length?r.authors.join(', '):'모든 작성자'),
         trackStyle:'width:38px;height:22px;border-radius:999px;position:relative;transition:background .15s;flex:none;cursor:'+(mine?'pointer':'default')+';opacity:'+(mine?'1':'.5')+';background:'+(active?accent:'#cbd5e1'),
         knobStyle:'position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s;transform:translateX('+(active?'16px':'0')+')',
         onSelect:()=>this.selectRule(r.id),
@@ -1001,39 +1052,74 @@ class Component extends DCLogic {
       onToggleCustomPicker:(e)=>{e.stopPropagation();this.setState(st=>({customPickerOpen:!st.customPickerOpen}));},
       customPickedName:d.custom_source_id?this.customSourceName(d.custom_source_id):'웹훅 선택…',
       customPickerBtnStyle:'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:8px;cursor:pointer;user-select:none;border:1px solid '+(d.custom_source_id?'#0ea5e9':'#d0d5dd')+';background:'+(d.custom_source_id?'#0ea5e90d':'#fff')+';font-size:13px;color:'+(d.custom_source_id?'#0c4a6e':'#98a2b3'),
-      customSourceOptions:s.customSources.map(c=>({
+      customSourceOptions:s.customSources.filter(c=>c.mine).map(c=>({
         name:c.name, owner:c.owner_name,
         style:'padding:9px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;background:'+(d.custom_source_id===c.id?'#eef2ff':'#fff'),
         onPick:(e)=>{e.stopPropagation();this.setState(st=>({draft:{...st.draft,custom_source_id:c.id},customPickerOpen:false}));},
       })),
-      noCustomSources:s.customSources.length===0,
+      noCustomSources:s.customSources.filter(c=>c.mine).length===0,
       payloadKeys:(()=>{
         const src=s.customSources.find(x=>x.id===d.custom_source_id);
         if(!src||!src.last_payload) return [];
         try { return Object.keys(this.flattenClient(JSON.parse(src.last_payload))).slice(0,30).map(k=>({key:k,onPick:()=>this.setState({condKey:k})})); } catch { return []; }
       })(),
       hasPayloadKeys:(()=>{ const src=s.customSources.find(x=>x.id===d.custom_source_id); return !!(src&&src.last_payload); })(),
-      condKey:s.condKey, onCondKey:(e)=>this.setState({condKey:e.target.value}),
+      condKey:s.condKey,
+      noPayloadYet:(()=>{ if(!Number.isInteger(d.custom_source_id)) return false; const src=s.customSources.find(x=>x.id===d.custom_source_id); return !(src&&src.last_payload); })(),
       condOp:s.condOp, onCondOp:(e)=>this.setState({condOp:e.target.value}),
       condValue:s.condValue, onCondValue:(e)=>this.setState({condValue:e.target.value}),
-      onCondKeyDown:(e)=>{if(e.key==='Enter'){e.preventDefault();this.addCondition();}},
       onAddCond:()=>this.addCondition(),
-      condRows:d.conditions.map((c,i)=>({key:c.key,opLabel:this.opLabel(c.op),value:c.value===''?'(빈 값)':c.value,onRemove:()=>this.removeCondition(i)})),
+      condRows:(()=>{
+        const src=s.customSources.find(x=>x.id===d.custom_source_id);
+        let keys=null;
+        if(src&&src.last_payload){ try { keys=new Set(Object.keys(this.flattenClient(JSON.parse(src.last_payload)))); } catch {} }
+        return d.conditions.map((c,i)=>({
+          key:c.key, opLabel:this.opLabel(c.op), value:c.value===''?'(빈 값)':c.value,
+          warn:keys&&!keys.has(c.key)?'⚠️ 최근 payload에 없는 key':'',
+          onRemove:()=>this.removeCondition(i),
+        }));
+      })(),
+      isTemplateMode:d.send_mode==='template',
+      sendModeMsgStyle:'flex:1;text-align:center;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:600;user-select:none;'+(d.send_mode!=='template'?'background:#fff;color:#344054;box-shadow:0 1px 2px rgba(16,20,30,.08)':'color:#98a2b3'),
+      sendModeTplStyle:'flex:1;text-align:center;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:600;user-select:none;'+(d.send_mode==='template'?'background:#fff;color:#344054;box-shadow:0 1px 2px rgba(16,20,30,.08)':'color:#98a2b3'),
+      onSendModeMsg:()=>this.patchDraft({send_mode:'messenger'}),
+      onSendModeTpl:()=>this.patchDraft({send_mode:'template'}),
+      draftTemplate:d.template,
+      onDraftTemplate:(e)=>this.patchDraft({template:e.target.value}),
+      templateKeys:(()=>{
+        const src=s.customSources.find(x=>x.id===d.custom_source_id);
+        if(!src||!src.last_payload) return [];
+        try { return Object.keys(this.flattenClient(JSON.parse(src.last_payload))).slice(0,30).map(k=>({key:k,onPick:()=>this.insertTemplateKey(k)})); } catch { return []; }
+      })(),
+      onTemplateKey:(e)=>{
+        if(e.key!=='Tab') return;
+        e.preventDefault();
+        const el=e.target, start=el.selectionStart, end=el.selectionEnd;
+        const next=el.value.slice(0,start)+'  '+el.value.slice(end);
+        this.patchDraft({template:next});
+        requestAnimationFrame(()=>{ try { el.selectionStart=el.selectionEnd=start+2; } catch {} });
+      },
+      templateInvalid:(()=>{ if(d.send_mode!=='template') return false; if(!d.template.trim()) return true; try { const t=JSON.parse(d.template); return t===null||typeof t!=='object'; } catch { return true; } })(),
       customOpen:s.customOpen,
       onOpenCustom:()=>{this.setState({customOpen:true});this.loadCustomSources();},
       onCloseCustom:()=>this.setState({customOpen:false}),
       customName:s.customName, onCustomName:(e)=>this.setState({customName:e.target.value}),
+      customSecret:s.customSecret, onCustomSecret:(e)=>this.setState({customSecret:e.target.value}),
       onCustomNameKey:(e)=>{if(e.key==='Enter'){e.preventDefault();this.createCustom();}},
       onCreateCustom:()=>this.createCustom(),
       customList:s.customSources.map(c=>{
-        const url=this.customUrl(c.token);
+        const mine=!!c.mine;
+        const url=mine?this.customUrl(c.token):null;
         const copied=s.copiedLabel==='custom-'+c.id;
         return {
-          name:c.name, owner:c.owner_name, url,
+          name:c.name, owner:c.owner_name,
+          url:url||'(소유자만 URL을 볼 수 있습니다)',
+          urlStyle:'flex:1;font-family:\'IBM Plex Mono\',monospace;font-size:12px;word-break:break-all;color:'+(url?'#475467':'#98a2b3'),
+          secretText:mine?(c.secret?('secret: '+c.secret):'secret 없음 (URL 토큰만)'):'',
           copyLabel:copied?'복사됨':'복사',
-          copyStyle:'flex:none;border:1px solid '+(copied?'#16a34a':'#d0d5dd')+';background:#fff;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;color:'+(copied?'#16a34a':'#344054'),
-          onCopy:()=>this.copyText('custom-'+c.id,url),
-          delStyle:'flex:none;width:28px;height:28px;border:1px solid #e4e7ec;background:#fff;border-radius:7px;cursor:pointer;color:#98a2b3;font-size:12px'+(c.mine?'':';visibility:hidden'),
+          copyStyle:'flex:none;border:1px solid '+(copied?'#16a34a':'#d0d5dd')+';background:#fff;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;color:'+(copied?'#16a34a':'#344054')+';cursor:pointer'+(url?'':';visibility:hidden'),
+          onCopy:()=>{ if(url) this.copyText('custom-'+c.id,url); },
+          delStyle:'flex:none;width:28px;height:28px;border:1px solid #e4e7ec;background:#fff;border-radius:7px;cursor:pointer;color:#98a2b3;font-size:12px'+(mine?'':';visibility:hidden'),
           onDelete:()=>this.delCustom(c.id),
           keyCount:(()=>{ if(!c.last_payload) return '수신 전'; try { return Object.keys(this.flattenClient(JSON.parse(c.last_payload))).length+' keys'; } catch { return '?'; } })(),
         };

@@ -56,6 +56,7 @@ const customRule = (over = {}) => ({
   name: 'c', description: '', source: 'custom', custom_source_id: 1,
   repos: [], actions: [], authors: [],
   conditions: [{ key: 'env', op: 'eq', value: 'prod' }],
+  send_mode: 'messenger', template: null,
   destinations: ['https://d.example/h'], active: true, ...over,
 });
 
@@ -66,6 +67,9 @@ test('validateRule: custom requires source id + valid conditions', () => {
   assert.equal(validateRule(customRule({ conditions: [{ key: '', op: 'eq', value: 'x' }] })).ok, false);
   assert.equal(validateRule(customRule({ conditions: [{ key: 'k', op: 'gt', value: 'x' }] })).ok, false);
   assert.equal(validateRule(customRule({ conditions: 'bad' })).ok, false);
+  assert.equal(validateRule(customRule({ send_mode: 'push' })).ok, false);
+  assert.equal(validateRule(customRule({ send_mode: 'template', template: '{invalid' })).ok, false);
+  assert.equal(validateRule(customRule({ send_mode: 'template', template: '{"text":"{{env}}"}' })).ok, true);
 });
 
 test('createRule persists custom fields', () => {
@@ -94,7 +98,8 @@ test('matchCustomRules: eq/ne/like, AND of all conditions, source id scoped', ()
   assert.equal(m([{ key: 'env', op: 'like', value: 'PROD' }]), 1); // 대소문자 무시 부분일치
   assert.equal(m([{ key: 'result.status', op: 'eq', value: 'OK' }, { key: 'count', op: 'eq', value: '3' }]), 1);
   assert.equal(m([{ key: 'result.status', op: 'eq', value: 'OK' }, { key: 'count', op: 'eq', value: '4' }]), 0);
-  assert.equal(m([{ key: 'missing', op: 'eq', value: '' }]), 1); // 없는 key = 빈 문자열 취급
+  assert.equal(m([{ key: 'missing', op: 'eq', value: 'x' }]), 1); // 없는 key = 조건 통과
+  assert.equal(m([{ key: 'missing', op: 'ne', value: 'x' }]), 1); // op 무관하게 통과
   assert.equal(m([], 8), 0); // 다른 소스
 });
 
@@ -213,4 +218,103 @@ test('legacy rules table (no custom) is migrated preserving rows', async () => {
   fs.rmSync(file, { force: true });
   fs.rmSync(file + '-wal', { force: true });
   fs.rmSync(file + '-shm', { force: true });
+});
+
+test('renderTemplate: 정확히 하나면 타입 보존, 문장 속은 문자열, 없는 key 빈값', async () => {
+  const { renderTemplate } = await import('../src/dispatch.js');
+  const payload = { env: 'prod', count: 3, ok: true, nested: { arr: [1, 2] } };
+  const out = renderTemplate({
+    text: '배포 {{env}} 완료 ({{count}}건)',
+    num: '{{count}}',
+    flag: '{{ok}}',
+    obj: '{{nested}}',
+    missing: '{{nope}}',
+    mixedMissing: 'x-{{nope}}-y',
+    fixed: 1,
+  }, payload);
+  assert.equal(out.text, '배포 prod 완료 (3건)');
+  assert.equal(out.num, 3);
+  assert.equal(out.flag, true);
+  assert.deepEqual(out.obj, { arr: [1, 2] });
+  assert.equal(out.missing, '');
+  assert.equal(out.mixedMissing, 'x--y');
+  assert.equal(out.fixed, 1);
+});
+
+test('template 모드 규칙은 치환된 payload 를 그대로 발송', async () => {
+  const received = [];
+  const dest = http.createServer((req, res) => {
+    let b = ''; req.on('data', c => b += c);
+    req.on('end', () => { received.push(JSON.parse(b)); res.writeHead(200); res.end(); });
+  });
+  dest.listen(0); await once(dest, 'listening');
+  const destUrl = `http://127.0.0.1:${dest.address().port}/hook`;
+
+  const { db, user } = setup();
+  const src = createCustomSource(db, user.id, '템플릿봇');
+  createRule(db, user.id, customRule({
+    custom_source_id: src.id, conditions: [],
+    send_mode: 'template',
+    template: JSON.stringify({ text: '{{env}} 배포', level: '{{count}}' }),
+    destinations: [destUrl],
+  }));
+  const { dispatchCustom } = await import('../src/dispatch.js');
+  const r = await dispatchCustom(db, src, { env: 'prod', count: 2 });
+  dest.close();
+  assert.equal(r.ok, 1);
+  assert.deepEqual(received[0], { text: 'prod 배포', level: 2 });
+});
+
+test('secret 설정된 웹훅은 X-Webhook-Secret 검증', async () => {
+  const { db, user } = setup();
+  const src = createCustomSource(db, user.id, '보안봇', 'topsecret');
+  const app = createApp(db, {
+    SESSION_SECRET: 's', GITLAB_WEBHOOK_SECRET: 'gl',
+    AUTH_URL: 'https://a', TOKEN_URL: 'https://a/t', ME_URL: 'https://a/m',
+    HIWORKS_CLIENT_ID: 'c', HIWORKS_CLIENT_SECRET: '', REDIRECT_URI: 'http://r',
+  }, { testSession: (req, _res, next) => { req.session = { userId: user.id }; next(); } });
+  const server = app.listen(0); await once(server, 'listening');
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  const noHeader = await fetch(`${base}/webhooks/custom/${src.token}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+  });
+  assert.equal(noHeader.status, 401);
+  const okReq = await fetch(`${base}/webhooks/custom/${src.token}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Webhook-Secret': 'topsecret' }, body: '{}',
+  });
+  assert.equal(okReq.status, 200);
+  server.close();
+});
+
+test('남의 웹훅은 token/secret 이 가려진다', () => {
+  const { db, user } = setup();
+  createCustomSource(db, user.id, 'x', 'sec');
+  const other = upsertUser(db, { office_user_no: 'o2', user_no: 'u2', name: '박' });
+  const asOther = listCustomSources(db, other.id)[0];
+  assert.equal(asOther.token, null);
+  assert.equal(asOther.secret, null);
+  const asMine = listCustomSources(db, user.id)[0];
+  assert.ok(asMine.token);
+  assert.equal(asMine.secret, 'sec');
+});
+
+test('custom 규칙은 본인 웹훅에만 생성 가능 (서버 검증)', async () => {
+  const { db, user } = setup();
+  const other = upsertUser(db, { office_user_no: 'o2', user_no: 'u2', name: '박' });
+  const src = createCustomSource(db, other.id, '남의 웹훅');
+  const app = createApp(db, {
+    SESSION_SECRET: 's', GITLAB_WEBHOOK_SECRET: 'gl',
+    AUTH_URL: 'https://a', TOKEN_URL: 'https://a/t', ME_URL: 'https://a/m',
+    HIWORKS_CLIENT_ID: 'c', HIWORKS_CLIENT_SECRET: '', REDIRECT_URI: 'http://r',
+  }, { testSession: (req, _res, next) => { req.session = { userId: user.id }; next(); } });
+  const server = app.listen(0); await once(server, 'listening');
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const r = await fetch(`${base}/api/rules`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(customRule({ custom_source_id: src.id })),
+  });
+  server.close();
+  assert.equal(r.status, 400);
+  assert.ok((await r.json()).error.includes('본인'));
 });
